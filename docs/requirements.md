@@ -21,7 +21,8 @@ This document details the functional, non-functional, and design requirements fo
   - `<xs:include>` and `<xs:import>` directives
   - **Anonymous (inline) complexTypes**, as a transient authoring state only — see Venetian Blind Conformance below
 - **Venetian Blind Conformance**: The finished schema is expected to contain **no anonymous type definitions**. This is a property of the completed artifact, not of the editing session, and it is **an authoring convention the editor does not enforce**. The editor neither blocks nor warns on save, and remaining anonymous types are not reported as validation entries; ensuring the schema is fully promoted is the author's responsibility. The editor explicitly supports sketching structure inline — nested elements, sequences, and choices under an element — and then promoting that structure to a globally named type via Extract Global ComplexType (§2.3). Anonymous types are therefore a supported intermediate state that the editor must create, render, and edit.
-- **Deferred to a later release**: `xs:attribute` declarations and attribute groups; `xs:group`; `xs:union`; `xs:list`; `xs:simpleContent`; mixed content; and the additional defaulted attributes `nillable`, `form`, `block`, and `final` (§2.4). These are absent from the UCI corpus but common in general Venetian Blind schemas. They are excluded from R1 scope only. The document model, Attributes Pane, and serialiser must accommodate them without structural rework.
+- **Deferred features**: **exporting the Design View canvas as an image is R2.** The canvas is viewable only inside the editor in R1, so schema structure cannot be shared as a picture; this is accepted for R1 and scheduled rather than left open.
+- **Deferred constructs**: `xs:attribute` declarations and attribute groups; `xs:group`; `xs:union`; `xs:list`; `xs:simpleContent`; mixed content; and the additional defaulted attributes `nillable`, `form`, `block`, and `final` (§2.4). These are absent from the UCI corpus but common in general Venetian Blind schemas. They are excluded from R1 scope only. The document model, Attributes Pane, and serialiser must accommodate them without structural rework.
 - **Permanently out of scope**: `substitutionGroup`, `xs:key` / `xs:unique` / `xs:keyref`, `xs:redefine`, and `xs:override`. These conflict with the Venetian Blind style focus rather than merely being unused.
 - **Round-trip safety**: Files containing deferred or out-of-scope constructs must open, save without corruption, and remain fully editable in Text View, even where Design View cannot render them. This applies from R1, since general schemas will be opened before general editing is supported. Unsupported constructs render as placeholders per §2.2.
 
@@ -31,7 +32,7 @@ This document details the functional, non-functional, and design requirements fo
 
 ### 2.1 Workspace & File Management
 
-- **Platform Independence**: The application must run identically on Windows, macOS, and Linux.
+- **Platform Independence**: The application must run identically on Windows, macOS, and Linux. It is a desktop application, packaged per §5, Delivery Form.
 - **Multi-File Handling**: Support opening, editing, and saving multiple XSD files concurrently using a tabbed layout.
 - **File Creation**: Support creating a new, empty XSD file with a user-specified target namespace.
 - **Directive Resolution**: Read and resolve `<xs:include>` and `<xs:import>` references so that autocomplete and validation operate across the full set of referenced files, not just the active file.
@@ -46,11 +47,13 @@ This document details the functional, non-functional, and design requirements fo
   - The red squiggly underline is the general marker for unresolved and invalid references, applied consistently wherever such a reference appears rather than only at the directive site. The squiggle's waveform carries the meaning independently of its colour, satisfying §5's requirement that information not depend on colour alone; the specific red must still meet contrast in both Light and Dark themes.
   - The unresolvable directive and all references depending on it are preserved verbatim on save. A missing file never causes its references to be rewritten or dropped.
   - If the missing file later becomes available, resolution is re-attempted on the next validation pass (§3) without requiring the document to be reopened.
-- **Namespace Handling (R1)**: *Provisional — pending confirmation.* The editor reads, resolves, and preserves all namespace declarations and prefixes, but does not support restructuring them.
-  - Setting a target namespace is supported at **file creation only** (§2.1, File Creation).
-  - Existing prefix declarations are displayed read-only in the Attributes Pane. Declaring new prefixes, renaming existing ones, and resolving prefix conflicts across imported schemas are deferred to a later release, alongside the constructs in §1 that require them.
-  - Prefixes and namespace declarations are preserved verbatim on save, including any that the editor does not itself use.
-  - Prefix restructuring remains available in Text View, since that view is unrestricted.
+- **Namespace Handling**: Namespace declarations and prefixes are **modifiable**, not merely preserved. The editor reads and resolves them, and supports restructuring them from the Attributes Pane.
+  - The **target namespace** may be set at file creation (§2.1, File Creation) and changed at any time thereafter.
+  - Prefixes may be **declared, renamed, and removed**. Renaming a prefix rewrites every qualified name bound to it within the file, in the same single operation and single undo entry as a type rename (§2.3).
+  - Prefix conflicts across imported schemas are reported and resolvable by rebinding one of the conflicting prefixes.
+  - **Cross-file consequences follow the rename policy (§2.3).** A prefix binding is local to its file, so renaming one affects nothing else. Changing a file's target namespace does affect every file that imports it: the editor warns, names the referencing files, and reports the count, but does **not** rewrite them.
+  - A prefix that is declared but unused is preserved on save rather than removed. The editor does not tidy namespace declarations it did not touch.
+  - Prefix restructuring also remains available in Text View, since that view is unrestricted.
 - **Save Model**:
   - Explicit save only. **No autosave and no crash-recovery journal** — both are deliberate v1 non-goals.
   - Each tab displays a dirty-state marker whenever it holds unsaved changes.
@@ -66,7 +69,7 @@ This document details the functional, non-functional, and design requirements fo
 - **Design View**:
   - A canvas-based node-graph representation of the XSD structure.
   - **Canvas Root**: The canvas renders a single object — an Element, ComplexType, or SimpleType — as its visual root, focused and centred. Until the user first navigates, the canvas is empty.
-  - **Re-rooting**: The root changes only by explicit navigation, and five paths perform it: an entry in the Left Panel object tree (§2.4); a Bottom Pane validation entry (§2.4); an entry in the Dependencies Tree (§2.4); Undo/Redo Navigation (§2.3); and a **double-click on the `Base Type` row in a ComplexType box header** (§2.2.1). The five are equivalent. No panel owns the root, and none is privileged over the others.
+  - **Re-rooting**: The root changes only by explicit navigation, and six paths perform it: an entry in the Left Panel object tree (§2.4); a Bottom Pane validation entry (§2.4); an entry in the Dependencies Tree (§2.4); Undo/Redo Navigation (§2.3); creating a global object from the canvas (§2.3, Create Global Object); and a **double-click on the `Base Type` row in a ComplexType box header** (§2.2.1). The six are equivalent. No panel owns the root, and none is privileged over the others.
     - The base type row is the **only** canvas label that re-roots. Double-clicking an element card's `Type` row edits the type instead (see **Changing an Element's Type** below); no other type name on the canvas navigates.
     - A base type carrying an unresolved reference (§2.1) cannot be re-rooted to. The attempt reports the missing file and leaves the canvas as it stands, rather than clearing it.
   - **Selection Does Not Re-root**: A single click on a node inside the canvas selects it, highlights it with a thick outline, and loads its properties into the Attributes Pane, without changing the root. Single-click inspects, double-click navigates. This distinction — not ownership of the root by one panel — is what prevents unintended re-rooting during canvas interaction.
@@ -74,6 +77,7 @@ This document details the functional, non-functional, and design requirements fo
     - Because no panel now indicates the current root, **the canvas must display it itself** — the root object's name and kind, shown persistently and independently of pan and zoom position. With no latched sidebar entry there is otherwise nothing that answers "what am I looking at" once the user has panned away from the root node.
   - **Changing an Element's Type**: Double-clicking the `Type | <typeName>` row on an element card opens a type picker and, on confirmation, rewrites the element's `type` attribute to the chosen type.
     - The picker offers the named ComplexTypes, SimpleTypes, and built-in primitives available in the resolved `include`/`import` closure (§2.1). It must be filterable rather than a plain list: the corpus offers 5,534 named types.
+    - **A name outside the closure is accepted.** The user may type a type that does not yet exist — an author often knows what they intend to create or import next — and the resulting reference renders as unresolved per §2.1, with the red squiggly underline and a Bottom Pane entry, until the type appears. This follows the same degrade-rather-than-refuse posture as an unresolvable directive: the editor reports the gap, it does not prevent it.
     - **Design View refreshes on confirmation.** The element's subtree is re-rendered against the new type, following that type's own expansion markers (§2.2, Expansion State). Nothing is discarded — the previous type's markers survive, since they belong to that type and not to this element — and the canvas root is unaffected.
     - Where the element's previous type was an inline anonymous complexType (§1), assigning a named type removes that inline definition. The change is one semantic operation and therefore one undo entry (§2.3), which restores the inline structure.
   - **Nested Bounding-Box Enclosers**: ComplexTypes render as enclosing bounding boxes. All child elements and nested structures are positioned **inside the bounds of their parent type box**. Expanding a nested element renders its referenced ComplexType as a nested encloser box, recursively, to unbounded depth.
@@ -105,7 +109,7 @@ This document details the functional, non-functional, and design requirements fo
 - **Navigation History**: The editor maintains a **back/forward history of navigation**, spanning both views, reached from toolbar controls and platform-conventional keyboard shortcuts.
   - Scope is **per tab**, matching Undo/Redo (§2.3). Each open file carries its own history.
   - The history is **unified across views**, in the same way the undo stack is. An entry records a location and the view it was in — a canvas root in Design View, a position in Text View. Moving back or forward to an entry belonging to the other view switches to that view, so the user is never returned to a location they cannot see. Where consecutive entries share a view, no switch occurs.
-  - Design View entries are pushed by all five re-rooting paths (§2.2, Re-rooting).
+  - Design View entries are pushed by all six re-rooting paths (§2.2, Re-rooting).
   - Text View entries are pushed by **discrete jumps only** — a Bottom Pane entry (§2.4), a search or find-and-replace result, a go-to-line, and the landing position when a view switch or a history move arrives in Text View. Ordinary scrolling, caret movement, and typing do not push entries; a history that recorded them would be unusable.
   - **Navigation history is not Undo/Redo.** It moves the user without changing the document, and Undo/Redo changes the document without being reachable from it. They are separate stacks with separate controls. Where they touch: an undo or redo that relocates the user (§2.3, Undo/Redo Navigation) pushes a navigation entry like any other move, so Back returns to where the user was before the undo — while the edit itself is reversed only by Redo.
   - Forward entries are discarded when the user navigates somewhere new after going back, per normal convention.
@@ -141,11 +145,25 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 ### 2.3 Interactive Graph Manipulation & Canvas Actions
 
+- **Create Global Object**: Right-clicking **empty canvas space** in Design View offers creating a new global **ComplexType**, **SimpleType**, or **top-level Element**.
+  - The user is prompted for a name, validated for uniqueness against the full resolved `include`/`import` closure (§2.1) on the same rule as Extract Global ComplexType (§2.3) — `xs:include` shares a target namespace, so a locally unique name can still collide across files. A collision is rejected inline and re-prompted.
+  - The new object is written to the root schema of the active file and the **canvas re-roots onto it** (§2.2, Re-rooting), so the user is placed in the thing they just made rather than having to find it.
+  - It is created empty: a ComplexType with no model group yet, a SimpleType with no base or facets yet, an Element with no type yet. Populating it uses the ordinary editing paths — an element with no type carries an unresolved reference until one is assigned (§2.2, Changing an Element's Type).
+  - This is the counterpart to **Delete** below, and the only path to a global object that does not begin with existing structure. Extract Global ComplexType (§2.3) promotes structure that already exists; this creates from nothing.
 - **Model Group Edits**: Support adding child elements, adding sequence/choice groups, and converting a model group between choice and sequence. Reachable from context menus on the parent ComplexType box, the joint circle icon, and local element cards.
 - **Copy & Paste**:
   - Copy elements or entire nested model groups, recursively including their children.
   - Paste copied items as children of a selected element or group.
+  - **The clipboard spans tabs.** Content copied in one file may be pasted into any other open file.
+  - Where a pasted element's type is not present in the destination's resolved `include`/`import` closure (§2.1), the paste still succeeds and the reference renders as unresolved per §2.1. The paste is never refused for a missing type.
+  - **Pasting into a different file prompts to bring dependencies with it.** The editor computes the types the pasted subtree depends on, transitively, and offers to copy those the destination lacks.
+    - Where a dependency name already exists in the destination, the user is prompted per name to **overwrite** the existing definition or **keep** it and let the pasted content reference it. Same-name types are not assumed to be the same type.
+    - Declining the dependency copy leaves the references unresolved, which is a legitimate outcome — the author may intend to add an `import` instead.
+    - The paste and any accompanying dependency copy are one semantic operation and therefore one undo entry (§2.3, Undo/Redo).
 - **Delete**: Support deleting an element, a model group (with its subtree), or a global type definition.
+  - **Deleting a global type is permitted even where it is still referenced.** References to it become unresolved and render per §2.1 — red squiggly underline, Bottom Pane entry — rather than being rewritten or deleted alongside it. Deletion never edits a reference.
+  - Before deleting a referenced type the editor reports how many references exist and in which files, so the user knows the size of what they are breaking. The report informs; it does not block.
+  - This is deliberately asymmetric with **Rename** below, which does rewrite references. Renaming preserves the author's intent that the references keep pointing at the same type; deleting does not, and inventing a replacement target would be a guess.
 - **Rename**:
   - Renaming a global type updates the declaration and rewrites all `type=` and `base=` references **within the same file only**.
   - If the renamed type is also referenced by another currently open file, the editor warns the user, names the referencing file, and reports the reference count. It does **not** rewrite cross-file references. Cross-file coupling in the corpus is low but non-zero: 3 types are referenced across files at 31 sites.
@@ -185,6 +203,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
   - Holds approximately 6,250 objects for the reference corpus and is subject to the virtualisation requirement in §5.
 - **Right Panel — Attributes Pane**:
   - View and edit type properties, base types (extensions), and annotations.
+  - View and edit the file's target namespace and its prefix declarations (§2.1, Namespace Handling).
   - **Complete Attribute Display**: Every attribute applicable to the selected object is listed, including those absent from the source document because they hold their implied default. The R1 defaulted set is exactly three: `minOccurs` (default `1`), `maxOccurs` (default `1`), and `abstract` (default `false`). `nillable`, `form`, `block`, and `final` are deferred per §1 — the pane must be able to take additional defaulted attributes without redesign.
   - **Default-Value Styling**: An attribute displaying its implied default renders its value in a muted style with its label in normal weight. An attribute holding a non-default value renders its value in the normal foreground style with its **label in bold**, marking it as explicitly specified rather than inherited from the default. The pair of cues lets a user distinguish effective value from provenance at a glance, without consulting the source text.
   - **Editing a Default**: Editing a muted default to a non-default value writes the attribute to the document, unmutes the value, and bolds the label. Returning it to the default value removes the attribute and reverts both cues.
@@ -244,7 +263,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
   - The preprocessor must escape only ampersands that do not already begin a valid character or entity reference. An ampersand introducing `&#x20;`, `&#nn;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, or `&apos;` is left untouched.
   - Escaping these would produce `&amp;#x20;` and corrupt the content — a failure the reference corpus would exhibit immediately across 116 character references.
   - The rule is scoped to annotation and documentation text. It does not apply to `xs:pattern` values or other attribute content.
-- **Attribute Ordering**: XSD attributes are serialised in the default order `name`, `type`, `minOccurs`, `maxOccurs`, with a user-configurable custom order. Foreign-namespace attributes are written after all XSD attributes, preserving their relative source order.
+- **Attribute Ordering**: XSD attributes are serialised in a **fixed order, configurable in Preferences**. The shipped default is `name`, `type`, `minOccurs`, `maxOccurs`; a user may reorder it, and the configured order then applies uniformly. Foreign-namespace attributes are written after all XSD attributes, preserving their relative source order.
   - **Ordering is strict and overrides preservation.** It applies to every element written on save, not only to elements the editor has modified. Where the source order differs from the configured order, it is normalised. Attribute order is therefore the one aspect of the original formatting the editor deliberately does not preserve; comments, whitespace, character references, and foreign attributes are unaffected by this rule and continue to round-trip verbatim.
   - **Consequence**: the first save of a file whose attribute order differs from the configured order produces a diff at every affected element. This is intended behaviour, and is the cost of a single canonical order. A team adopting the editor on an existing schema should expect one normalising commit, and is best served by making it a commit of its own rather than mixing it with a substantive change.
 - **Implicit Defaults Rule**: Attributes holding their implied default value are never written to the document. This covers the three defaulted attributes in scope: `minOccurs` (`1`), `maxOccurs` (`1`), and `abstract` (`false`). The editor treats the default as the effective value for display and editing purposes (§2.4) while omitting it from serialised output.
@@ -254,6 +273,12 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 ## 5. Non-Functional & Quality Attributes
 
+- **Delivery Form**: A **desktop application**, installed and run locally on the user's own machine. Not a web application, not a browser-hosted tool, and not mobile. This is settled, and it is the primary input to the technology-stack decision rather than an outcome of it.
+- **Packaging**: Distributed as a **self-contained installable artifact per platform**. Installing or running the editor must not require the end user to obtain a runtime, SDK, interpreter, or package manager, nor to fetch anything over the network at install time or on first run. Whatever the application needs is inside the artifact.
+  - Developer-side dependency management is unconstrained. Contributors may use whatever toolchain, package manager, and lockfile the chosen stack brings; the constraint applies to what reaches the end user.
+  - A runtime may be **embedded** in the artifact, but never **required** of the user.
+  - This is a constraint on the stack, not on the feature set: a stack that cannot produce a single self-contained installable for Windows, macOS, and Linux is disqualified, however well it suits the rest of the specification.
+  - It also reinforces §2.1's offline posture. An editor that fetches dependencies on first run would not work in the environments this schema corpus lives in.
 - **Performance Target**: The editor must open, render, edit, and save schemas of at least **10 MB** without perceptible lag or UI freezes. The reference corpus main file is 8.3 MB / 147,419 lines, giving roughly 20% headroom against this target.
 - **Virtualisation**: Rendering must be virtualised wherever collection size scales with schema size — specifically the Text View line list, the left panel object tree (~6,250 entries), and the Attributes Pane enumeration editor (individual lists run to hundreds of values; 7,766 enumerations corpus-wide). Enumeration lists are uncapped.
 - **Selective Rendering**: Design View renders only the expanded subtree beneath the current canvas root (§2.2), not the full schema graph. Because expansion state is per object and therefore shared across occurrences (§2.2, Expansion State), a single re-root can bring a large subtree into view at once; the render must stay within the §5 performance target when it does.
@@ -267,21 +292,19 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 ## 6. Open Items
 
-Not requirements. All items blocking implementation have been closed; what remains needs confirmation or a design-phase decision.
+Not requirements. All items blocking implementation have been closed, and no confirmations remain outstanding. What is left is one design-phase decision and one measurement.
 
-1. **Namespace handling scope — confirmation needed.** §2.1 provisionally limits R1 to setting a target namespace at file creation, with existing prefixes read-only and restructuring deferred to a later release. Written as a recommendation, not a stated decision. Confirm or widen.
-2. **Muted value and marker colour tokens — design phase.** §2.4 styles defaulted attribute values muted; §3 defines red squiggly and amber dashed underlines. In each case the information is carried by a non-colour cue as well (bold label, stroke pattern), so §5's colour-independence requirement is met. What remains is verifying each specific token against 4.5:1 contrast in both Light and Dark themes.
-3. **Type picker — does it accept a name outside the closure? — confirmation needed.** §2.2's **Changing an Element's Type** offers the resolved closure. Whether the user may also enter a name that is not in it — creating a reference that renders as unresolved per §2.1, on the same "degrade rather than refuse" posture the rest of §2.1 takes — is undecided. Permitting it suits an author who knows an import is coming; refusing it prevents a class of typo that only surfaces at the next validation pass (§3).
-4. **Attribute-order conformance of the corpus — measurable.** §4 makes attribute ordering strict, so the size of the first normalising save depends on how much of the corpus already matches the default order. Counting the elements whose attribute order differs would turn the "expect one normalising commit" advice in §4 into a figure, and would confirm whether `name`, `type`, `minOccurs`, `maxOccurs` is the right default in the first place.
-5. **Ampersand preprocessor — partially verifiable.** §4's positive path (escaping a raw ampersand) has no corpus input and needs constructed fixtures. Its negative path is well covered: the corpus holds 116 character references and 3 named entity references that the preprocessor must leave untouched, giving a strong regression test for the most likely failure mode.
+1. **Muted value and marker colour tokens — design phase.** §2.4 styles defaulted attribute values muted; §3 defines red squiggly and amber dashed underlines. In each case the information is carried by a non-colour cue as well (bold label, stroke pattern), so §5's colour-independence requirement is met. What remains is verifying each specific token against 4.5:1 contrast in both Light and Dark themes.
+2. **Attribute-order conformance of the corpus — measurable.** §4 makes attribute ordering strict, so the size of the first normalising save depends on how much of the corpus already matches the default order. Counting the elements whose attribute order differs would turn the "expect one normalising commit" advice in §4 into a figure, and would confirm whether `name`, `type`, `minOccurs`, `maxOccurs` is the right default in the first place.
 
 ### Verification gaps
 
-These are not decisions but coverage notes for test planning. Three R1 requirements cannot be verified against the reference corpus, because the corpus contains no instance of what they handle:
+These are not decisions but coverage notes for test planning. Four R1 requirements cannot be verified against the reference corpus, because the corpus contains no instance of what they handle:
 
 | Requirement | Section | Corpus coverage |
 |---|---|---|
 | Extract Global ComplexType | §2.3 | 0 anonymous complexTypes |
+| Create Global Object | §2.3 | authoring path, not a corpus feature |
 | Ampersand preprocessor (escape path) | §4 | 0 raw ampersands |
 | Unresolvable directive handling | §2.1 | all references resolve |
 

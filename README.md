@@ -5,7 +5,8 @@ Venetian Blind schema style.
 
 > **Status: pre-alpha.** No code yet. The project is still in the requirements phase — the
 > technology stack has not been chosen, so the repository layout below is deliberately minimal and
-> will grow once that decision is made.
+> will grow once that decision is made. The delivery form is settled: a packaged desktop
+> application for Windows, macOS, and Linux that installs without the user fetching dependencies.
 
 ## Repository layout
 
