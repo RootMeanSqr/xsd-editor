@@ -1,6 +1,7 @@
 # xsd-editor
 
-An editor for XML Schema Definition (XSD) files.
+A platform-independent graphical editor for XML Schema Definition (XSD)
+files, optimised for the Venetian Blind schema style.
 
 > **Status: pre-alpha.** No code yet. The project is still in the requirements
 > phase — the technology stack has not been chosen, so the repository layout
@@ -16,7 +17,8 @@ CLAUDE.md        Pointer to AGENTS.md for Claude Code
 
 ## Where to start
 
-- [`docs/requirements.md`](docs/requirements.md) — what we are building and why.
+- [`docs/requirements.md`](docs/requirements.md) — the specification.
+- [`docs/requirements-review.md`](docs/requirements-review.md) — open gaps in it.
 - [`AGENTS.md`](AGENTS.md) — conventions to follow when contributing.
 
 ## Contributing
