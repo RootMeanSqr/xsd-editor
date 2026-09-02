@@ -1,11 +1,11 @@
 # xsd-editor
 
-A platform-independent graphical editor for XML Schema Definition (XSD)
-files, optimised for the Venetian Blind schema style.
+A platform-independent graphical editor for XML Schema Definition (XSD) files, optimised for the
+Venetian Blind schema style.
 
-> **Status: pre-alpha.** No code yet. The project is still in the requirements
-> phase — the technology stack has not been chosen, so the repository layout
-> below is deliberately minimal and will grow once that decision is made.
+> **Status: pre-alpha.** No code yet. The project is still in the requirements phase — the
+> technology stack has not been chosen, so the repository layout below is deliberately minimal and
+> will grow once that decision is made.
 
 ## Repository layout
 
@@ -22,5 +22,5 @@ CLAUDE.md        Pointer to AGENTS.md for Claude Code
 
 ## Contributing
 
-Work happens on short-lived branches off `main`, merged via pull request.
-Until a stack is chosen there is no build, test, or lint step to run.
+Work happens on short-lived branches off `main`, merged via pull request. Until a stack is chosen
+there is no build, test, or lint step to run.
