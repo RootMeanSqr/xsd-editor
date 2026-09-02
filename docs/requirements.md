@@ -65,8 +65,13 @@ This document details the functional, non-functional, and design requirements fo
   - Syntax highlighting, line folding, search-and-replace, and inline validation markers.
 - **Design View**:
   - A canvas-based node-graph representation of the XSD structure.
-  - **Selection-Based Visual Root**: When no object is selected in the sidebar browser, the canvas is empty. Selecting an object (Element, ComplexType, or SimpleType) makes it the sole visual root, focused and centred.
-  - **Active Canvas Root vs Selected Details**: Clicking a node inside the canvas selects it, highlights it with a thick outline, and loads its properties into the Attributes Pane, but does **not** change the visual canvas root. The root is determined solely by the sidebar selection, preventing unexpected re-rooting during canvas interaction.
+  - **Canvas Root**: The canvas renders a single object — an Element, ComplexType, or SimpleType — as its visual root, focused and centred. Until the user first navigates, the canvas is empty.
+  - **Re-rooting**: The root changes only by explicit navigation, and five paths perform it: an entry in the Left Panel object tree (§2.4); a Bottom Pane validation entry (§2.4); an entry in the Dependencies Tree (§2.4); Undo/Redo Navigation (§2.3); and a **double-click on a type name rendered on the canvas**. The five are equivalent. No panel owns the root, and none is privileged over the others.
+    - Double-click targets are the type names the canvas already displays: the `Type | <typeName>` row on an element card, a ComplexType box header, an `(extension base)` box label (§2.2.1), and any node in a SimpleType derivation chain (§2.2.2).
+    - A type name carrying an unresolved reference (§2.1) cannot be re-rooted to. The attempt reports the missing file and leaves the canvas as it stands, rather than clearing it.
+  - **Selection Does Not Re-root**: A single click on a node inside the canvas selects it, highlights it with a thick outline, and loads its properties into the Attributes Pane, without changing the root. Single-click inspects, double-click navigates. This distinction — not ownership of the root by one panel — is what prevents unintended re-rooting during canvas interaction.
+  - **The Object Tree Does Not Latch**: The Left Panel (§2.4) is a filterable listing of the file's objects, not a selection model. It holds no persistent selection, marks no current item, and is unaffected by re-rooting performed from any other path. Clicking an entry navigates the canvas; that is its only role.
+    - Because no panel now indicates the current root, **the canvas must display it itself** — the root object's name and kind, shown persistently and independently of pan and zoom position. With no latched sidebar entry there is otherwise nothing that answers "what am I looking at" once the user has panned away from the root node.
   - **Nested Bounding-Box Enclosers**: ComplexTypes render as enclosing bounding boxes. All child elements and nested structures are positioned **inside the bounds of their parent type box**. Expanding a nested element renders its referenced ComplexType as a nested encloser box, recursively, to unbounded depth.
   - **Joint Circle Connectors & Right-Angled Branching**: Model groups are represented on connection lines by a small circular joint node. The stem from the parent leads into the joint circle, which splits into right-angled branch connectors linking to each child card. Joint circles, stems, branches, and child cards must remain exactly middle-aligned under all sizing changes and nested expansions.
     - **Glyphs**: Sequence and choice are distinguished by pictorial icons rather than letters, following the convention established by existing XSD design tools. Sequence and choice must be distinguishable by icon shape alone, without relying on colour or on a text label.
@@ -153,6 +158,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 - **Left Panel — XSD Objects Tree**:
   - Groups: Elements (messages), ComplexTypes, SimpleTypes.
   - Search bar supporting wildcard filters (`*` for any string, `?` for any single character).
+  - Clicking an entry re-roots the canvas on that object (§2.2). The tree holds no persistent selection and marks no current item.
   - Holds approximately 6,250 objects for the reference corpus and is subject to the virtualisation requirement in §5.
 - **Right Panel — Attributes Pane**:
   - View and edit type properties, base types (extensions), and annotations.
@@ -167,8 +173,9 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
   - **Correction to prior revision**: `minValue` and `maxValue` were listed as facets in an earlier draft. They are not XSD facets and have been removed.
 - **Dependencies Tree Pane**:
   - Right-click any type to display a reverse dependency tree showing, recursively, the elements and types that use it.
+  - Clicking an entry re-roots the canvas on that element or type (§2.2), so a dependency chain can be followed by successive clicks.
 - **Bottom Pane — Validation Messages**:
-  - Lists validation errors and warnings. Clicking an entry navigates to the corresponding element in both Design and Text Views.
+  - Lists validation errors and warnings. Clicking an entry navigates to the corresponding element in both views — scrolling to the line in Text View, and re-rooting the canvas on it in Design View (§2.2).
 
 ---
 
@@ -224,7 +231,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 - **Performance Target**: The editor must open, render, edit, and save schemas of at least **10 MB** without perceptible lag or UI freezes. The reference corpus main file is 8.3 MB / 147,419 lines, giving roughly 20% headroom against this target.
 - **Virtualisation**: Rendering must be virtualised wherever collection size scales with schema size — specifically the Text View line list, the left panel object tree (~6,250 entries), and the Attributes Pane enumeration editor (individual lists run to hundreds of values; 7,766 enumerations corpus-wide). Enumeration lists are uncapped.
-- **Selective Rendering**: Design View renders only the expanded and selected subtree, not the full schema graph.
+- **Selective Rendering**: Design View renders only the expanded subtree beneath the current canvas root (§2.2), not the full schema graph.
 - **Theming**: Full Light and Dark mode support with a user override toggle. All surfaces — text editor, canvas, backgrounds, and input controls — update immediately on change.
 - **Accessibility (a11y)**:
   - Colour contrast conforming to WCAG 2.1 AA.
@@ -239,7 +246,9 @@ Not requirements. All items blocking implementation have been closed; what remai
 
 1. **Namespace handling scope — confirmation needed.** §2.1 provisionally limits R1 to setting a target namespace at file creation, with existing prefixes read-only and restructuring deferred to a later release. Written as a recommendation, not a stated decision. Confirm or widen.
 2. **Muted value and marker colour tokens — design phase.** §2.4 styles defaulted attribute values muted; §3 defines red squiggly and amber dashed underlines. In each case the information is carried by a non-colour cue as well (bold label, stroke pattern), so §5's colour-independence requirement is met. What remains is verifying each specific token against 4.5:1 contrast in both Light and Dark themes.
-3. **Ampersand preprocessor — partially verifiable.** §4's positive path (escaping a raw ampersand) has no corpus input and needs constructed fixtures. Its negative path is well covered: the corpus holds 116 character references and 3 named entity references that the preprocessor must leave untouched, giving a strong regression test for the most likely failure mode.
+3. **Canvas navigation history — design phase.** §2.2 gives the canvas five re-rooting paths and no latched sidebar selection to return to, so following a dependency chain or a validation entry moves the user with no route back. Whether the canvas needs its own back/forward navigation is a design-phase decision. It would be distinct from Undo/Redo, which reverses edits rather than navigation — though note that Undo/Redo Navigation re-roots as a side effect, so the two histories interleave and must not be conflated.
+4. **Expansion state across re-roots — design phase.** §2.2 does not say whether the expansion state of a subtree survives re-rooting away from it and back. Discarding it is simpler; retaining it matters more now that re-rooting is a routine navigation move rather than an occasional one.
+5. **Ampersand preprocessor — partially verifiable.** §4's positive path (escaping a raw ampersand) has no corpus input and needs constructed fixtures. Its negative path is well covered: the corpus holds 116 character references and 3 named entity references that the preprocessor must leave untouched, giving a strong regression test for the most likely failure mode.
 
 ### Verification gaps
 

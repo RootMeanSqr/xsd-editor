@@ -13,26 +13,28 @@ here blocks the stack decision.
 
 ## Contradictions and underspecified interactions
 
-### 1. Canvas navigation has no defined entry point except the sidebar
+### 1. Canvas navigation has no defined entry point except the sidebar — RESOLVED
 
-§2.2 states that the visual root is determined **solely** by sidebar
-selection, explicitly so that canvas interaction never re-roots unexpectedly.
-That rule is good, but three other features need to move the canvas and none
-of them says how:
+*Closed. §2.2 now specifies five equivalent re-rooting paths and the object
+tree no longer latches a selection; §6 carries the two questions this opened.*
 
-- **Bottom Pane** (§2.4) — clicking a validation entry "navigates to the
-  corresponding element in both Design and Text Views".
-- **Undo/Redo Navigation** (§2.3) — undoing a Design View operation
-  "recentre[s] the canvas on the affected node".
-- **Dependencies Tree** (§2.4) — no navigation behaviour is stated at all,
-  though a reverse dependency tree is only useful if its entries are
-  clickable.
+The original finding: §2.2 stated that the visual root was determined **solely**
+by sidebar selection, while the Bottom Pane, Undo/Redo Navigation, and the
+Dependencies Tree all needed to move the canvas to a node that might not lie
+beneath the current root — which scrolling cannot satisfy.
 
-In each case the target may not lie under the current root, so scrolling
-cannot satisfy it and the canvas must re-root — which is what §2.2 forbids.
-The likely resolution is that these paths re-root deliberately and update the
-sidebar selection to match, keeping the sidebar the single source of truth for
-what the root is. Worth stating, because "solely" currently rules it out.
+The resolution went further than the finding. Rather than making the other
+three paths exceptions to sidebar ownership, the root has **no owning panel**:
+all four navigate on equal footing, a fifth path was added (double-clicking a
+type name on the canvas), and the object tree was demoted from a selection
+model to a filterable list that navigates on click and holds no state.
+Single-click still inspects and double-click navigates, so the protection
+against accidental re-rooting survives as a gesture distinction rather than a
+panel restriction.
+
+Two consequences are now open items in §6: with nothing latched, the canvas
+must display its own root, and with five ways in and no way back, canvas
+back/forward navigation needs a decision.
 
 ### 2. Attribute ordering conflicts with formatting preservation
 
