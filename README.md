@@ -18,7 +18,6 @@ CLAUDE.md        Pointer to AGENTS.md for Claude Code
 ## Where to start
 
 - [`docs/requirements.md`](docs/requirements.md) — the specification.
-- [`docs/requirements-review.md`](docs/requirements-review.md) — open gaps in it.
 - [`AGENTS.md`](AGENTS.md) — conventions to follow when contributing.
 
 ## Contributing
