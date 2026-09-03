@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The schema model, parser, serialiser, index and commands. Deliberately carries no
+       Avalonia reference: everything in 0003 of the plan is testable headless. -->
+  <!-- 0002: trimmed publishing, and AOT-safe practice held to so that NativeAOT stays a
+       one-property change rather than a rewrite. Enforced on our own code. -->
+  <PropertyGroup>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+</Project>

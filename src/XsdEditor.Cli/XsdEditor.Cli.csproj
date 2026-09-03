@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Headless harness. CI measures parse, serialise and validation timings through this
+       without needing a display. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>xsdedit</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../XsdEditor.Core/XsdEditor.Core.csproj" />
+  </ItemGroup>
+
+</Project>

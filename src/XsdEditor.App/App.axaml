@@ -1,0 +1,12 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="XsdEditor.App.App"
+             RequestedThemeVariant="Default">
+
+    <!-- XE-079: Light and Dark with a user override. "Default" follows the system until
+         the preference is wired up in Phase 2. -->
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+</Application>

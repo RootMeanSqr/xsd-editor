@@ -12,13 +12,21 @@ for scope and goals.
 **The stack is .NET 10 with Avalonia**, in C#, recorded in
 [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md). Published
 self-contained, single-file and trimmed, under the JIT. `CommunityToolkit.Mvvm` is the MVVM layer.
-Nothing is scaffolded yet, but nothing blocks it either.
+
+Work proceeds in phases; the route from here to a shipping editor is
+[`docs/implementation-plan.md`](docs/implementation-plan.md). Read it before starting a piece of
+work, so that a change lands in the phase it belongs to.
 
 ## Repository layout
 
 | Path        | Contents                                         |
 | ----------- | ------------------------------------------------ |
-| `docs/`     | Requirements, design notes, and decision records |
+| `docs/`     | Requirements, the plan, design notes, and decision records |
+| `src/XsdEditor.Core` | Syntax tree, schema model, parser, serialiser, index, commands. **No Avalonia reference** |
+| `src/XsdEditor.App`  | The Avalonia application. The publish properties live here |
+| `src/XsdEditor.Cli`  | `xsdedit`, the headless harness CI measures through |
+| `tests/XsdEditor.Core.Tests` | xUnit tests over the core                |
+| `tests/XsdEditor.Benchmarks` | BenchmarkDotNet performance fixtures     |
 | `AGENTS.md` | This file                                        |
 | `CLAUDE.md` | Pointer to this file, for Claude Code            |
 | `LICENSE`   | Apache-2.0, the project's outbound licence       |
@@ -26,13 +34,32 @@ Nothing is scaffolded yet, but nothing blocks it either.
 | `CLA.md`    | Individual Contributor License Agreement         |
 | `CONTRIBUTING.md` | How work lands, and how to sign the CLA    |
 
-Source, test, and build directories will be added when the first code lands.
+`XsdEditor.Core` deliberately carries no Avalonia reference. That is what keeps the parser, model
+and serialiser testable headless, and it is a property to preserve rather than an accident.
 
 ## Build, test, lint
 
-None yet — nothing is scaffolded. The commands will be the ordinary .NET ones (`dotnet build`,
-`dotnet test`, `dotnet format`); document them exactly, with the solution path, as soon as there is
-something to run. An agent should be able to verify a change without guessing.
+Run from the repository root. The solution is `XsdEditor.slnx`.
+
+```bash
+dotnet restore XsdEditor.slnx
+dotnet build   XsdEditor.slnx                    # warnings are errors
+dotnet test    XsdEditor.slnx
+dotnet format  XsdEditor.slnx                    # CI runs --verify-no-changes
+dotnet run --project src/XsdEditor.App           # the editor
+dotnet run --project src/XsdEditor.Cli -- --help # the headless harness
+```
+
+`dotnet build` treats warnings as errors and runs the .NET analysers, so the build *is* the
+static-analysis gate `XE-081` asks for — a finding fails locally exactly as it does in CI.
+
+**The reference corpus is not in the repository** and is located through `XSDEDITOR_CORPUS`
+([`docs/decisions/0004-build-and-security-tooling.md`](docs/decisions/0004-build-and-security-tooling.md)).
+Without it the build and the unit suite pass, and only the corpus round-trip and timing suites
+skip — loudly. They are the acceptance tests for `XE-069`, `XE-071` and `XE-072`, so run them
+before proposing a change to the parser, model or serialiser.
+
+Full setup instructions are in [`docs/development.md`](docs/development.md).
 
 ## Conventions
 
@@ -65,12 +92,14 @@ Choices that are expensive to reverse — the stack, the parser, the persistence
 licence — get a short record in `docs/decisions/` (one file per decision: context, the decision,
 the consequences). Open questions live in `docs/requirements.md` until they are answered.
 
-Three are recorded so far: **Apache-2.0** in
+Four are recorded so far: **Apache-2.0** in
 [`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md), **.NET with Avalonia**
 in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md), and
 **AvaloniaEdit for Text View** in
-[`docs/decisions/0003-text-view-editor-control.md`](docs/decisions/0003-text-view-editor-control.md) —
-the last still `proposed`, conditional on a measured spike, so do not begin Text View
+[`docs/decisions/0003-text-view-editor-control.md`](docs/decisions/0003-text-view-editor-control.md),
+and **build, corpus access and security tooling** in
+[`docs/decisions/0004-build-and-security-tooling.md`](docs/decisions/0004-build-and-security-tooling.md).
+`0003` is still `proposed`, conditional on a measured spike, so do not begin Text View
 implementation without running it.
 
 ## Working style

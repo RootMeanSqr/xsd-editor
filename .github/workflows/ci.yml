@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  # The .NET CLI reports telemetry at build time. It never reaches the artifact
+  # (XE-075 constrains the application), but there is no reason to send it from CI.
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      - run: dotnet format XsdEditor.slnx --verify-no-changes --no-restore
+
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      - run: dotnet build XsdEditor.slnx --configuration Release --no-restore
+      - run: dotnet test XsdEditor.slnx --configuration Release --no-build --verbosity normal
+
+  publish:
+    name: Publish self-contained (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # XE-074: the artifact must build self-contained, single-file and trimmed on every
+      # platform, so a dependency that reflects types by name surfaces here rather than in
+      # an installer. Trim warnings are reported, not yet gating — Avalonia's own trim
+      # annotation coverage has not been measured, and a gate we have not measured would
+      # fail on somebody else's warnings.
+      - run: >
+          dotnet publish src/XsdEditor.App/XsdEditor.App.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xsd-editor-${{ matrix.rid }}
+          path: src/XsdEditor.App/bin/Release/net10.0/${{ matrix.rid }}/publish/
+          retention-days: 7
+
+  security:
+    name: Supply chain (XE-081)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      # XE-081: no dependency ships with a known unfixed vulnerability. Any hit fails the
+      # build — the response is to update, replace, or record an exception in docs/decisions.
+      - name: Vulnerable package scan
+        run: |
+          dotnet list XsdEditor.slnx package --vulnerable --include-transitive \
+            > vulnerable.txt 2>&1
+          cat vulnerable.txt
+          if grep -qiE '> +[A-Za-z0-9._-]+ +.*(Critical|High|Moderate|Low)' vulnerable.txt; then
+            echo "::error::A dependency has a known vulnerability. See the report above."
+            exit 1
+          fi
+      # Apache-2.0 4d obliges us to carry each dependency's NOTICE into the installer,
+      # and 0001 restricts which licences may ship at all.
+      - name: Licence inventory
+        run: |
+          dotnet list XsdEditor.slnx package --include-transitive > packages.txt 2>&1
+          cat packages.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supply-chain-report
+          path: |
+            vulnerable.txt
+            packages.txt
+          retention-days: 30
+
+  corpus:
+    name: Reference corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # The reference corpus is a controlled interface standard and is never committed.
+      # XSDEDITOR_CORPUS names local paths or URLs; see
+      # docs/decisions/0004-build-and-security-tooling.md.
+      - name: Report corpus availability
+        env:
+          XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
+        run: |
+          if [ -z "$XSDEDITOR_CORPUS" ]; then
+            echo "::warning::XSDEDITOR_CORPUS is not set — round-trip and timing suites \
+          against the reference corpus were skipped. They are the acceptance tests for \
+          XE-069, XE-071 and XE-072."
+            exit 0
+          fi
+          echo "XSDEDITOR_CORPUS is set; corpus suites run from Phase 1."
