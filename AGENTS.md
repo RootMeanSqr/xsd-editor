@@ -42,6 +42,9 @@ verify a change without guessing.
   the width matters only in the diff view. `docs/requirements.md` is an accepted exception: it is
   maintained unwrapped elsewhere and reflowing it here would conflict on every import.
 - **Documentation.** A change to behaviour and the docs describing it belong in the same commit.
+- **Requirement IDs.** Requirements in `docs/requirements.md` carry stable `XE-nnn` identifiers. Cite
+  them in commits, tests, and issues rather than section numbers. A new requirement takes the next
+  unused number; an identifier is never reused or reassigned, even after its requirement is removed.
 
 ## Decisions
 
