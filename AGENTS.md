@@ -20,6 +20,10 @@ to require picking a stack, stop and ask.
 | `docs/`     | Requirements, design notes, and decision records |
 | `AGENTS.md` | This file                                        |
 | `CLAUDE.md` | Pointer to this file, for Claude Code            |
+| `LICENSE`   | Apache-2.0, the project's outbound licence       |
+| `NOTICE`    | Attribution notice required by Apache-2.0 §4d    |
+| `CLA.md`    | Individual Contributor License Agreement         |
+| `CONTRIBUTING.md` | How work lands, and how to sign the CLA    |
 
 Source, test, and build directories will be added alongside the stack decision.
 
@@ -36,7 +40,11 @@ verify a change without guessing.
   reason is not obvious from the diff. During an interactive working session, accumulate changes
   and commit once the thread of work is finished — do not commit after every exchange.
 - **Pull requests.** Everything lands via PR, including documentation. Open as a draft while work
-  is in progress.
+  is in progress. A contributor signs [`CLA.md`](CLA.md) before their first PR is merged.
+- **No Claude session links.** Commit messages and pull request descriptions must not carry
+  `Claude-Session:` trailers or `claude.ai/code/session_…` URLs. They resolve only for the account
+  that created them, so in a public repository they are noise in the permanent record. Co-authorship
+  trailers are fine; the session link is not.
 - **Markdown.** Wrap prose at roughly 99 columns so diffs stay reviewable in a side-by-side view.
   Nothing enforces it, and nothing external requires it — GitHub soft-wraps rendered Markdown, so
   the width matters only in the diff view. `docs/requirements.md` is an accepted exception: it is
@@ -52,6 +60,9 @@ Choices that are expensive to reverse — the stack, the parser, the persistence
 licence — get a short record in `docs/decisions/` (one file per decision: context, the decision,
 the consequences). Open questions live in `docs/requirements.md` until they are answered.
 
+The licence is settled: **Apache-2.0**, recorded in
+[`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md). The stack is not.
+
 ## Working style
 
 - Ask before making an architectural choice the requirements do not already settle. Marking
@@ -60,6 +71,13 @@ the consequences). Open questions live in `docs/requirements.md` until they are 
   CVEs first — `XE-081` requires that none ship with a known unfixed vulnerability, and every
   dependency is inside the installed artifact with no runtime update path, so a library added here
   is a library to watch for the life of the product. Prefer the smaller dependency surface.
+- Check the candidate's **licence** too, in the same pass. Anything shipped to users must permit
+  distribution inside an Apache-2.0 product: MIT, BSD, ISC, Apache-2.0, MPL-2.0, and
+  GPLv2-with-Classpath-Exception are fine; GPL and AGPL are not. LGPL is permitted only where the
+  library is linked dynamically from inside the artifact and a relink path is preserved. Build and
+  test tooling is unconstrained, since it does not reach the artifact. Record the licence of every
+  shipped dependency — Apache-2.0 §4d obliges us to carry its `NOTICE` contents into each
+  installer, and the same inventory feeds the SBOM and the `XE-081` composition scan.
 - Do not merge with an unresolved Critical or High finding from either security check (`XE-081`):
   composition scanning over dependencies, and static analysis over our own code. Medium and Low are
   triaged, not gates. An exception to any of this is recorded in `docs/decisions/`, never left
