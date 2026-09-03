@@ -138,3 +138,85 @@ jobs:
             vulnerable.txt
             packages.txt
           retention-days: 30
+
+  corpus:
+    name: Reference corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The corpus is a controlled interface standard and is never committed; XSDEDITOR_CORPUS
+      # holds the pinned URLs (docs/decisions/0004-build-and-security-tooling.md). The suites
+      # that consume it arrive in Phase 1; what this job does now is prove the fixture is
+      # reachable and unchanged, so that a moved or edited upstream file is a clear failure
+      # here rather than a mystery inside a parser test later.
+      - name: Fetch and verify
+        env:
+          XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
+        run: |
+          if [ -z "$XSDEDITOR_CORPUS" ]; then
+            echo "::warning::XSDEDITOR_CORPUS is not set — the reference corpus was not fetched \
+          or verified. The round-trip and timing suites are the acceptance tests for XE-069, \
+          XE-071, XE-072 and XE-083, and none of them ran."
+            exit 0
+          fi
+
+          mkdir -p corpus && cd corpus
+          # Semicolon-separated: a colon cannot separate entries that may be URLs.
+          # The trailing newline matters: without it `read` returns false on the final
+          # entry and drops it silently, which is a bug this job had and the count
+          # assertion below now makes impossible to reintroduce.
+          printf '%s\n' "$XSDEDITOR_CORPUS" | tr ';' '\n' > ../entries.txt
+          expected=$(grep -c '[^[:space:]]' ../entries.txt)
+          echo "entries: $expected"
+
+          first=1
+          while IFS= read -r entry; do
+            [ -n "$entry" ] || continue
+            name=$(basename "$entry")
+            case "$entry" in
+              http*)
+                # --fail so an HTML error page is never mistaken for a schema.
+                curl -sS --fail --location --max-time 300 "$entry" -o "$name" ;;
+              *)
+                cp "$entry" "$name" ;;
+            esac
+            if [ "$first" = 1 ]; then echo "entry point: $name"; first=0; fi
+          done < ../entries.txt
+
+          echo "--- fetched ---"
+          ls -l
+          actual=$(ls -1 | wc -l)
+          if [ "$actual" -ne "$expected" ]; then
+            echo "::error::Expected $expected corpus files but fetched $actual. A dropped \
+          entry would leave the closure incomplete, and the suites would then measure \
+          something other than the corpus."
+            exit 1
+          fi
+          sha256sum ./* | tee ../checksums.txt
+
+          # The bytes are the thing under test (XE-067, XE-083), so assert nothing normalised
+          # them in transit: every corpus file is wholly CRLF with no bare LF.
+          python3 - <<'PY_EOF'
+          import pathlib, sys
+          bad = False
+          for f in sorted(pathlib.Path('.').glob('*.xsd')):
+              b = f.read_bytes()
+              crlf = b.count(b'\r\n')
+              bare = b.count(b'\n') - crlf
+              print(f"{f.name}: bytes={len(b)} CRLF={crlf} bare-LF={bare}")
+              if bare:
+                  print(f"::error::{f.name} contains {bare} bare LF; the corpus is wholly CRLF, "
+                        "so something normalised it in transit and every round-trip test "
+                        "against it would be meaningless.")
+                  bad = True
+          sys.exit(1 if bad else 0)
+          PY_EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-checksums
+          path: checksums.txt
+          if-no-files-found: ignore
+          retention-days: 30

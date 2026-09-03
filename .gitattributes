@@ -3,6 +3,11 @@
 # core.autocrlf=true checks out CRLF and their first format run rewrites every file.
 * text=auto eol=lf
 
+# Schema fixtures are round-trip test inputs whose exact bytes are the thing under test
+# (XE-067, XE-083). Git must never normalise their line endings: doing so would make a
+# CRLF fixture pass on Linux and fail on Windows, or vice versa.
+*.xsd -text
+
 # Windows-only scripts must keep CRLF to run.
 *.cmd text eol=crlf
 *.bat text eol=crlf

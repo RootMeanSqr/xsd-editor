@@ -22,19 +22,19 @@ Nothing else is needed: no database, no service, no container. Build and test co
 
 ## The reference corpus
 
-The UCI v2.5 files are a controlled interface standard and are **not** in this repository. Point `XSDEDITOR_CORPUS` at your own copy:
+The UCI v2.5 files are a controlled interface standard and are **not** in this repository. `XSDEDITOR_CORPUS` names them: a **semicolon-separated** list, each entry a local path or an `https:` URL, of which **the first is the entry point and the rest are its `include`/`import` dependencies**.
 
 ```bash
-export XSDEDITOR_CORPUS=/path/to/UCI_MessageDefinitions_v2_5_0.xsd:/path/to/UCI_SecurityMarkings_v2_5_0.xsd
+export XSDEDITOR_CORPUS='/path/UCI_Versioning_v2_5_0.xsd;/path/UCI_MessageDefinitions_v2_5_0.xsd;/path/UCI_SecurityMarkings_v2_5_0.xsd'
 ```
 
 ```powershell
-$env:XSDEDITOR_CORPUS = 'C:\uci\UCI_MessageDefinitions_v2_5_0.xsd;C:\uci\UCI_SecurityMarkings_v2_5_0.xsd'
+$env:XSDEDITOR_CORPUS = 'C:\uci\UCI_Versioning_v2_5_0.xsd;C:\uci\UCI_MessageDefinitions_v2_5_0.xsd;C:\uci\UCI_SecurityMarkings_v2_5_0.xsd'
 ```
 
-Entries are separated by the platform path separator (`:` on Linux and macOS, `;` on Windows), and each may be a local path or an `https:` URL.
+`UCI_Versioning` is the entry point despite being the smallest file: it is the only one nothing else references, so the closure rooted there reaches all three. CI reads the same variable, holding the pinned upstream URLs; which commit those point at, and what each file should check-sum to, is recorded in [`measurements/corpus-figures.md`](measurements/corpus-figures.md).
 
-> **The first entry is the entry point; the rest are its `include`/`import` dependencies.**
+**The corpus is wholly CRLF.** If you keep a local copy in a Git repository, make sure it is not line-ending normalised on checkout, or every round-trip test will fail against it for a reason that has nothing to do with your change.
 
 Without the variable the build and the whole unit suite still pass — only the corpus round-trip and timing suites skip, loudly. Since those are the acceptance tests for the measured serialisation requirements, run them before proposing a change to the parser, model or serialiser.
 

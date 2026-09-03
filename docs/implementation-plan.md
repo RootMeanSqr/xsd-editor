@@ -106,6 +106,8 @@ These are architectural rather than cosmetic — cancellation has to run through
 
 ### Phase 1 verification
 
+- **Line endings are asserted explicitly, not assumed** (`XE-083`). The corpus is wholly CRLF, so a serialiser hard-coding `\r\n` passes every corpus test while being wrong; purpose-built LF and mixed-ending fixtures are what catch that, and they are written alongside the corpus suite rather than after it.
+
 - **Round-trip is the headline test**: parse → serialise an unmodified document and assert the output is byte-identical, over every fixture. On `UCI_MessageDefinitions_v2_5_0.xsd` the requirements make a falsifiable prediction — **zero** attribute-ordering diff (`XE-071`, measured over 19,377 multi-attribute elements) and **exactly one** line of diff from the single explicit `minOccurs="1"` (`XE-072`). Assert precisely that. Any other diff is a defect in the syntax layer.
 - Character references preserved across 144 patterns / 116 references (`XE-069`).
 - Purpose-built fixtures for the four §6 verification gaps: anonymous complexTypes, raw ampersands, unresolvable directives, and a from-nothing authoring path.
@@ -180,7 +182,7 @@ So that a requirement falling through the gaps between phases is visible rather 
 | Phase | Requirements |
 | --- | --- |
 | 0 | `XE-081` (tooling half) |
-| 1 | `XE-016`–`XE-019`, `XE-021`, `XE-022`, `XE-030`, `XE-031`, `XE-038`–`XE-040`, `XE-042`, `XE-043`, `XE-052`–`XE-062`, `XE-065`, `XE-066`, `XE-067`–`XE-072` |
+| 1 | `XE-016`–`XE-019`, `XE-021`, `XE-022`, `XE-030`, `XE-031`, `XE-038`–`XE-040`, `XE-042`, `XE-043`, `XE-052`–`XE-062`, `XE-065`, `XE-066`, `XE-067`–`XE-072`, `XE-083` |
 | 2 | `XE-013`, `XE-014`, `XE-015`, `XE-020`, `XE-023`, `XE-024`, `XE-044`–`XE-051`, `XE-064`, `XE-077`, `XE-079`, `XE-080` |
 | 3 | `XE-025`, `XE-026`, `XE-028`, `XE-029`, `XE-063` |
 | 4 | `XE-027`, `XE-033`–`XE-037`, `XE-041`, `XE-078`, `XE-082` |

@@ -14,17 +14,19 @@ Three questions came with the first commit, and none of them belongs in a commit
 
 The UCI v2.5 files are a controlled interface standard, and this is a public Apache-2.0 repository. `XSDEDITOR_CORPUS` names the files instead. A developer points it at a local checkout; CI reads it from a repository variable.
 
-**Format.** A list of entries separated by the platform path separator (`:` on Linux and macOS, `;` on Windows). Each entry is either a local path or an `https:` URL, and the two may be mixed.
+**Format.** A list of entries separated by a **semicolon on every platform**. Each entry is either a local path or an `https:` URL, and the two may be mixed.
 
 > **The first entry is the entry point. The rest are its `include`/`import` dependencies.**
 
-That ordering is the whole contract, and it exists because the unit of work is the resolved closure (`XE-016`), not a file: the suites need to know which document to open before they can resolve anything from it. Entries after the first are made available for resolution and are not opened directly. Where an entry is a URL it is fetched to a temporary directory first, and `schemaLocation` resolution then proceeds against local paths exactly as `XE-018` specifies — network URLs are not resolvable by the editor in R1, and nothing about this fixture mechanism changes that.
+That ordering is the whole contract, and it exists because the unit of work is the resolved closure (`XE-016`), not a file: the suites need to know which document to open before they can resolve anything from it. Entries after the first are made available for resolution and are not opened directly.
 
-**Corpus-dependent suites skip loudly when it is unset, and never silently.** They are the acceptance tests for the measured requirements — `XE-069`'s character references, `XE-071`'s zero-diff attribute ordering, and `XE-072`'s single-line defaults diff — so a green run that quietly skipped them would misrepresent what was verified.
+The separator is a semicolon rather than the platform path separator, which an earlier draft of this record specified. A colon cannot separate a list whose entries may be URLs, because `https:` contains one — and a rule that works for local paths and silently mangles remote ones is worse than either alone.
 
-The repository carries small purpose-built fixtures instead, including for the four requirements §6 records as having no corpus coverage at all.
+Where an entry is a URL it is fetched to a temporary directory first, and `schemaLocation` resolution then proceeds against local paths exactly as `XE-018` specifies. Network URLs are not resolvable by the editor in R1, and nothing about this fixture mechanism changes that.
 
-**This does not weaken `XE-075`.** That requirement is scoped to the application — "The **application** makes no outbound network requests" — and the application still makes none. A test harness fetching a fixture is not the product doing so. `XE-074` points the same way, recording that "developer-side dependency management is unconstrained", though it is about dependencies rather than fixtures and so is corroboration rather than authority. Recorded here so that a CI job which downloads schemas is not later mistaken for a violation of a rule it was never under.
+**Fetched files are opaque bytes.** They are never decoded, re-encoded, or line-ending normalised in transit, because their exact bytes are what the round-trip suites assert against (`XE-067`, `XE-083`). The corpus is wholly CRLF, so a fetch path that helpfully normalised would turn every round-trip test into a false pass on one platform and a false failure on another. CI verifies each file against a recorded SHA-256, which catches exactly that.
+
+**The corpus is pinned to a commit, not tracked.** Its pin and per-file checksums are recorded in [`../measurements/corpus-figures.md`](../measurements/corpus-figures.md). Tracking the upstream default branch would mean an edit to the standard arriving as an unexplained parser-test failure; pinned, a round-trip diff is always our regression. Moving the pin is a reviewed commit that updates those checksums in the same change. The URLs live only in the repository variable, so there is one operative copy to update.
 
 ### Licence checking stays manual; the CI step is an inventory and is named as one
 
