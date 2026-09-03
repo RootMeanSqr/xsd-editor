@@ -66,7 +66,7 @@ This document details the functional, non-functional, and design requirements fo
 
 ### 2.2 Dual-View Editing Mode
 
-- **Single-Pane View Switching**: The main window switches between **Text View** and **Design View** via a toggle control in the top toolbar. Only one view is rendered at a time, maximising screen space.
+- **Single-Pane View Switching**: The main window switches between **Text View** and **Design View** via a toggle control on the Top Ribbon (§2.4). Only one view is rendered at a time, maximising screen space.
 - **Text View**:
   - Full text/XML representation of the active XSD file.
   - Syntax highlighting, line folding, search-and-replace, and inline validation markers.
@@ -110,7 +110,7 @@ This document details the functional, non-functional, and design requirements fo
     - **A placeholder is not an error state and must not be styled as one.** Design View now has three distinct "cannot display this" conditions that carry different meanings and must be visually distinguishable: an unsupported-construct placeholder (valid schema, outside editor scope); an unresolved reference (§2.1, red squiggly underline, genuine error); and a gap marker (§2.2, unparsed region of a malformed buffer). Only the second indicates something wrong with the schema.
   - **Abstract Type Indication**: Types declared `abstract="true"` render with a distinguishing badge or italic label on the type box. 70 such types exist in the corpus.
   - Support visual editing of element names, types, and annotations.
-- **Navigation History**: The editor maintains a **back/forward history of navigation**, spanning both views, reached from toolbar controls and platform-conventional keyboard shortcuts.
+- **Navigation History**: The editor maintains a **back/forward history of navigation**, spanning both views, reached from the Top Ribbon (§2.4) and platform-conventional keyboard shortcuts.
   - Scope is **per tab**, matching Undo/Redo (§2.3). Each open file carries its own history.
   - The history is **unified across views**, in the same way the undo stack is. An entry records a location and the view it was in — a canvas root in Design View, a position in Text View. Moving back or forward to an entry belonging to the other view switches to that view, so the user is never returned to a location they cannot see. Where consecutive entries share a view, no switch occurs.
   - Design View entries are pushed by all six re-rooting paths (§2.2, Re-rooting).
@@ -211,6 +211,15 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 ### 2.4 Panel Layout
 
+- **Top Ribbon**: A persistent horizontal ribbon above the main view, carrying the quick actions that are reached often enough not to belong in a menu. It holds the **Text / Design view toggle** (§2.2), the **Navigation History** back and forward controls (§2.2), **Validate** (§3, Explicit user command), and the two **display toggles** below. Everything on the ribbon is also reachable from the menu bar and by keyboard; the ribbon is a shortcut, never the only path to an action.
+  - **Show Element Types**: when off, element cards omit the `Type` row and show the element name alone. The type is unchanged in the document — this is a display setting, nothing more. While it is off the double-click-to-change-type path (§2.2) has no row to act on, so changing an element's type goes through the Attributes Pane instead.
+  - **Show Annotations**: when on, `xs:annotation` / `xs:documentation` text is rendered inline on the canvas, on **both element cards and type boxes**. When off, an object carrying an annotation still shows a small indicator, so the user can tell "no documentation" from "documentation hidden" and reach the text in the Attributes Pane.
+  - Both toggles affect **Design View rendering only**. They change no document content, produce no dirty state, and create no undo entry (§2.3) — a display toggle is not an edit. In Text View they are shown disabled rather than hidden, so the ribbon does not change shape between views.
+  - Defaults: **Show Element Types on, Show Annotations off.** A type name is a short, structural fact and belongs on the card; documentation is prose of unbounded length and would set the width of every box that carries it. Both are one click from the ribbon, so a user who wants annotations always visible pays for that choice once.
+- **Preferences**: User preferences **persist across sessions**, restored at startup, and are application-wide rather than per file or per tab. The persisted set includes the two ribbon display toggles, the Light/Dark theme override (§5), and the attribute serialisation order (§4).
+  - Preferences are stored in a per-user configuration file in the platform-conventional location for each supported OS, outside any schema directory. Nothing about a user's preferences is ever written into a schema file.
+  - A configuration file that is missing, unreadable, or unparsable is replaced by the defaults and reported once. The editor always starts.
+  - Expansion state (§2.2), the canvas root, navigation history, and open tabs are **not** preferences and are not persisted. They are per-tab session state and are gone when the file is closed; the editor does not restore a workspace.
 - **Left Panel — XSD Objects Tree**:
   - Groups: Elements (messages), ComplexTypes, SimpleTypes.
   - Search bar supporting wildcard filters (`*` for any string, `?` for any single character).
@@ -244,7 +253,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 - **Triggers**: A validation pass runs on exactly three events:
   - **File load**, once the document and its `include`/`import` closure have been read.
   - **Save**, initiated after the file has been written to disk.
-  - **Explicit user command**, available from the menu and the action bar.
+  - **Explicit user command**, available from the menu and from **Validate** on the Top Ribbon (§2.4).
 
   Validation is **not continuous**. No pass is triggered by editing, by switching views, or on a debounce timer.
 - **Save Is Never Blocked**: A failing validation result does not prevent saving. The user may save a schema with any number of validation errors, and the editor does not prompt for confirmation on save. Validation reports; it does not gate.
@@ -297,7 +306,7 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 - **Performance Target**: The editor must open, render, edit, and save schemas of at least **10 MB** without perceptible lag or UI freezes. The reference corpus main file is 8.3 MB / 147,419 lines, giving roughly 20% headroom against this target.
 - **Virtualisation**: Rendering must be virtualised wherever collection size scales with schema size — specifically the Text View line list, the left panel object tree (~6,250 entries), and the Attributes Pane enumeration editor (individual lists run to hundreds of values; 7,766 enumerations corpus-wide). Enumeration lists are uncapped.
 - **Selective Rendering**: Design View renders only the expanded subtree beneath the current canvas root (§2.2), not the full schema graph. Because expansion state is per object and therefore shared across occurrences (§2.2, Expansion State), a single re-root can bring a large subtree into view at once; the render must stay within the §5 performance target when it does.
-- **Theming**: Full Light and Dark mode support with a user override toggle. All surfaces — text editor, canvas, backgrounds, and input controls — update immediately on change.
+- **Theming**: Full Light and Dark mode support with a user override toggle, persisted with the other preferences (§2.4). All surfaces — text editor, canvas, backgrounds, and input controls — update immediately on change.
 - **Accessibility (a11y)**:
   - Colour contrast conforming to WCAG 2.1 AA.
   - Visible keyboard focus indicators on all fields and controls.
