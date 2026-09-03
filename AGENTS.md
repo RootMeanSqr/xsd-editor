@@ -66,9 +66,13 @@ Choices that are expensive to reverse — the stack, the parser, the persistence
 licence — get a short record in `docs/decisions/` (one file per decision: context, the decision,
 the consequences). Open questions live in `docs/requirements.md` until they are answered.
 
-Two are recorded so far: **Apache-2.0** in
-[`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md), and **.NET with Avalonia**
-in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md).
+Three are recorded so far: **Apache-2.0** in
+[`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md), **.NET with Avalonia**
+in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md), and
+**AvaloniaEdit for Text View** in
+[`docs/decisions/0003-text-view-editor-control.md`](docs/decisions/0003-text-view-editor-control.md) —
+the last still `proposed`, conditional on a measured spike, so do not begin Text View
+implementation without running it.
 
 ## Working style
 

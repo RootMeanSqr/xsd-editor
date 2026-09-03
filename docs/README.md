@@ -12,3 +12,4 @@ decision, and its consequences.
 | ------------------------------------------------------ | ----------------------------------- |
 | [`0001-licensing.md`](decisions/0001-licensing.md)      | Apache-2.0, with paid maintenance   |
 | [`0002-technology-stack.md`](decisions/0002-technology-stack.md) | .NET 10 and Avalonia       |
+| [`0003-text-view-editor-control.md`](decisions/0003-text-view-editor-control.md) | AvaloniaEdit, pending a spike (**proposed**) |
