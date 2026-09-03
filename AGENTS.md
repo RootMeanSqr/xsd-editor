@@ -33,7 +33,8 @@ verify a change without guessing.
 - **Branches.** Short-lived, branched from `main`, one topic each. Prefer `docs/…`, `feat/…`,
   `fix/…`, `chore/…` prefixes.
 - **Commits.** Imperative subject under ~72 characters, with a body explaining *why* when the
-  reason is not obvious from the diff.
+  reason is not obvious from the diff. During an interactive working session, accumulate changes
+  and commit once the thread of work is finished — do not commit after every exchange.
 - **Pull requests.** Everything lands via PR, including documentation. Open as a draft while work
   is in progress.
 - **Markdown.** Wrap prose at roughly 99 columns so diffs stay reviewable in a side-by-side view.

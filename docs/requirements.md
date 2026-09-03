@@ -292,10 +292,24 @@ Derivation by extension is the dominant structural pattern in the corpus — 3,6
 
 ## 6. Open Items
 
-Not requirements. All items blocking implementation have been closed, and no confirmations remain outstanding. What is left is one design-phase decision and one measurement.
+Not requirements. Nothing here blocks implementation, and no confirmations remain outstanding. What is left is one design-phase decision, one measurement, and a set of scope questions raised in review that have not yet been answered either way.
 
 1. **Muted value and marker colour tokens — design phase.** §2.4 styles defaulted attribute values muted; §3 defines red squiggly and amber dashed underlines. In each case the information is carried by a non-colour cue as well (bold label, stroke pattern), so §5's colour-independence requirement is met. What remains is verifying each specific token against 4.5:1 contrast in both Light and Dark themes.
 2. **Attribute-order conformance of the corpus — measurable.** §4 makes attribute ordering strict, so the size of the first normalising save depends on how much of the corpus already matches the default order. Counting the elements whose attribute order differs would turn the "expect one normalising commit" advice in §4 into a figure, and would confirm whether `name`, `type`, `minOccurs`, `maxOccurs` is the right default in the first place.
+
+### Scope questions
+
+These came out of a review of this specification against an independent draft. None is a defect in what is written; each is something the document is silent on. They are listed so the silence is deliberate rather than accidental — answering any of them may add a requirement, or may be closed as out of scope.
+
+1. **Autocomplete is assumed but never required.** §2.1 uses "the resolved closure is what autocomplete offers" as part of its rationale, but no section actually requires an autocomplete affordance, in either view. Either §2.2 should require it and say what it completes over, or the rationale in §2.1 should stop leaning on it.
+2. **Go-to-definition.** Navigation is specified in the outward direction — from a use to the type it names (§2.2.1, §2.2). The inward direction is covered only by the Dependencies Tree (§2.4). Whether a direct "who references this?" jump exists as its own affordance is unstated.
+3. **`default` and `fixed` on elements.** §2.4 styles defaulted attribute values muted, so attribute defaults are handled. The element-level `default` and `fixed` attributes are never mentioned — neither as displayed, nor as editable, nor as excluded.
+4. **Instance-document validation.** §3 covers schema validity. Validating an XML instance against the open schema is not required, and is not listed as a non-goal either; it is simply absent. It is a large feature and worth an explicit yes or no.
+5. **Unused-type reporting.** The Dependencies Tree (§2.4) answers "what does this depend on" per object. Whether the editor reports globally unreferenced types across the resolved closure — useful on a 5,534-type corpus — is unstated.
+6. **Product-level non-goals.** §1 excludes XSD 1.1 and defers canvas image export to R2. Other plausible expectations — schema generation from instance documents, XSLT or code generation, diffing two schemas, version control integration — are neither promised nor excluded.
+7. **Who the users are.** The document specifies behaviour without stating the audience. Whether the reader is a schema author fluent in XSD or an analyst who is not changes the weight of several decisions, the Text View's prominence among them.
+8. **Telemetry and network egress.** §5 settles packaging but says nothing about whether the application makes network requests at all. Given the reference corpus is a controlled interface standard, a commitment either way is worth recording before the stack is chosen — it constrains crash reporting, analytics, and update checking, all of which are ordinarily added by default.
+9. **Stable requirement identifiers.** Requirements are currently addressed by section number and bolded label. Section numbers move as the document changes, which makes test cases and commit messages that cite them go stale. Whether to adopt stable IDs is a documentation decision, not a product one, but it gets more expensive the longer it waits.
 
 ### Verification gaps
 
