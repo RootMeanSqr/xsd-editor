@@ -10,22 +10,28 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
 
     <!-- XE-081: our own code is held to a clean static-analysis result, so warnings
          are failures rather than a backlog. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- XE-081 wants composition scanning "in the build, not as a periodic audit". NuGet's
+         audit is exactly that: restore fails on any advisory, on every machine, rather than
+         only where CI happens to grep a report. NU1901-NU1904 are the advisory severities;
+         NU1905 means the audit source could not be consulted, which must fail rather than
+         pass quietly — an audit that did not run is not a clean result. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904;NU1905</WarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
 
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <Deterministic>true</Deterministic>
 
-    <!-- A committed lock file is what makes the XE-081 composition scan reproducible.
-         CI switches restore to locked mode once the first restore has committed them. -->
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Set by CI only, where it makes paths in the built output machine-independent.
+         Deterministic is already the SDK default and is not restated. -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
 </Project>

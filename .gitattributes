@@ -1,0 +1,16 @@
+# .editorconfig sets end_of_line = lf and `dotnet format --verify-no-changes` enforces it,
+# but the format job runs on Linux only. Without this, a Windows contributor on the default
+# core.autocrlf=true checks out CRLF and their first format run rewrites every file.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to run.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Never normalise binary content.
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.zip binary

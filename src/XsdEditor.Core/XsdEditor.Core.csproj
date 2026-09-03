@@ -11,6 +11,10 @@
   <PropertyGroup>
     <IsTrimmable>true</IsTrimmable>
     <IsAotCompatible>true</IsAotCompatible>
+
+    <!-- The one project with a public API worth documenting; the executables opt out by
+         simply not setting this, rather than by overriding a repository-wide default. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
 </Project>

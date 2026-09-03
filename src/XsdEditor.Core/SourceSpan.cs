@@ -10,10 +10,26 @@ namespace XsdEditor.Core;
 /// (<c>XE-067</c>, <c>XE-069</c>) fall out of the model rather than being implemented on
 /// top of it.
 /// </remarks>
-/// <param name="Start">Zero-based index of the first character.</param>
-/// <param name="Length">Number of characters covered. Never negative.</param>
-public readonly record struct SourceSpan(int Start, int Length)
+public readonly record struct SourceSpan
 {
+    /// <summary>Creates a span.</summary>
+    /// <param name="start">Zero-based index of the first character. Never negative.</param>
+    /// <param name="length">Number of characters covered. Never negative.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Either argument is negative.</exception>
+    public SourceSpan(int start, int length)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(start);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        Start = start;
+        Length = length;
+    }
+
+    /// <summary>Zero-based index of the first character.</summary>
+    public int Start { get; }
+
+    /// <summary>Number of characters covered.</summary>
+    public int Length { get; }
+
     /// <summary>Index one past the last character in the span.</summary>
     public int End => Start + Length;
 
@@ -29,7 +45,6 @@ public readonly record struct SourceSpan(int Start, int Length)
     /// </exception>
     public static SourceSpan FromBounds(int start, int end)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(start);
         ArgumentOutOfRangeException.ThrowIfLessThan(end, start);
         return new SourceSpan(start, end - start);
     }

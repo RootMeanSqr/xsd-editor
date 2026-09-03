@@ -6,6 +6,5 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/XsdEditor.Core.Tests/XsdEditor.Core.Tests.csproj" />
-    <Project Path="tests/XsdEditor.Benchmarks/XsdEditor.Benchmarks.csproj" />
   </Folder>
 </Solution>

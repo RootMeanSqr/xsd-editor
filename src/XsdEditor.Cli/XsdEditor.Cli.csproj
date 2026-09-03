@@ -9,7 +9,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>xsdedit</AssemblyName>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

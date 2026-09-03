@@ -7,7 +7,6 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsAotCompatible>false</IsAotCompatible>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

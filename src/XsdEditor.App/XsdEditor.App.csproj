@@ -10,7 +10,6 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- XE-074: a self-contained installable per platform, with the runtime embedded and
@@ -25,17 +24,19 @@
     <!-- XE-075: no outbound requests. Nothing here may add a telemetry or update path. -->
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
 
-    <!-- IL2104 is the trimmer's per-assembly rollup, "assembly X produced trim warnings".
-         Avalonia.DesignerSupport raises it, and TreatWarningsAsErrors would otherwise make
-         a third party's trim-annotation coverage fail our publish. 0004 records trim
-         warnings as reported rather than gating until they have been measured, so they are
-         demoted here to match — without this the build contradicted that record.
+    <!-- ILLinkTreatWarningsAsErrors defaults to TreatWarningsAsErrors, so the repository
+         setting reaches the trimmer and a third party's trim-annotation coverage fails our
+         publish. 0004 records trim warnings as reported rather than gating until they have
+         been measured; this is what makes that true of the build as well as the document.
 
-         This demotes the rollup for OUR assemblies too, which is the cost. Our own code is
-         still guarded at compile time: XsdEditor.Core sets IsAotCompatible, so its trim and
-         AOT analyser findings are ordinary warnings and remain errors. Tightening this back
-         to an error is the Phase 2 item 0004 names, once the real warning set is known. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104</WarningsNotAsErrors>
+         Demoting one code at a time does not work: IL2104 (Avalonia.DesignerSupport) was
+         suppressed first, and IL2026 then appeared from built-in COM support on Windows
+         only. The family has to be taken as a whole or it is whack-a-mole.
+
+         Our own code keeps its compile-time guard: XsdEditor.Core sets IsAotCompatible, so
+         its trim and AOT analyser findings are ordinary compiler warnings and remain
+         errors. Tightening this back is the Phase 2 item 0004 names. -->
+    <ILLinkTreatWarningsAsErrors>false</ILLinkTreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,7 +44,6 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>

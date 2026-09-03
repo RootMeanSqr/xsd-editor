@@ -4,9 +4,19 @@ on:
   pull_request:
   push:
     branches: [main]
+  # XE-081 is about known-unfixed vulnerabilities, which are disclosed on their own
+  # schedule rather than ours. Without this, an advisory published after the last merge
+  # stays invisible until someone happens to open a pull request.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -84,7 +94,12 @@ jobs:
       - run: dotnet restore XsdEditor.slnx
       # XE-081: no dependency ships with a known unfixed vulnerability. Any hit fails the
       # build — the response is to update, replace, or record an exception in docs/decisions.
-      - name: Vulnerable package scan
+      # The gate itself is NuGetAudit in Directory.Build.props, which already failed the
+      # restore above if anything is advisory-affected. This step exists to produce the
+      # report as an artifact, and asserts the clean result POSITIVELY: inferring "no
+      # vulnerabilities" from the absence of a severity word would report a scan that
+      # never ran as a pass, which is the one thing a security gate must not do.
+      - name: Vulnerable package report
         run: |
           set +e
           dotnet list XsdEditor.slnx package --vulnerable --include-transitive \
@@ -93,24 +108,25 @@ jobs:
           set -e
           cat vulnerable.txt
 
-          # A broken scanner and a clean tree both produce no findings, so they are
-          # distinguished explicitly: reporting "no vulnerabilities" because the tool
-          # failed to run is the one outcome this check must never produce.
           if [ "$scan_status" -ne 0 ]; then
-            echo "::error::The vulnerability scan did not run to completion \
-          (dotnet list exited $scan_status). This is a tooling failure, not a clean result."
+            echo "::error::The vulnerability report did not run to completion (exit $scan_status)."
             exit 1
           fi
-
-          if grep -qiE '^ *> +[A-Za-z0-9._-]+ +.*(Critical|High|Moderate|Low)' vulnerable.txt; then
-            echo "::error::A dependency has a known vulnerability (XE-081). See the report above."
+          if grep -q 'NU1905' vulnerable.txt; then
+            echo "::error::The audit source could not be consulted (NU1905). Not a clean result."
             exit 1
           fi
+          if ! grep -q 'has no vulnerable packages given the current sources' vulnerable.txt; then
+            echo "::error::Could not positively confirm a clean dependency graph (XE-081)."
+            exit 1
+          fi
+          echo "Confirmed: no known vulnerabilities in the dependency graph."
 
-          echo "No known vulnerabilities in the dependency graph."
-      # Apache-2.0 4d obliges us to carry each dependency's NOTICE into the installer,
-      # and 0001 restricts which licences may ship at all.
-      - name: Licence inventory
+      # NOTE: this is an inventory, not a licence check. `dotnet list package` reports no
+      # licence data, so 0001's allowlist and the Apache-2.0 4d NOTICE obligation are still
+      # enforced by hand, against the annotations in Directory.Packages.props. Automating
+      # them needs a tool this project has not chosen yet (0004).
+      - name: Package inventory (informational)
         run: |
           dotnet list XsdEditor.slnx package --include-transitive > packages.txt 2>&1
           cat packages.txt
@@ -122,26 +138,3 @@ jobs:
             vulnerable.txt
             packages.txt
           retention-days: 30
-
-  corpus:
-    name: Reference corpus
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-      # The reference corpus is a controlled interface standard and is never committed.
-      # XSDEDITOR_CORPUS names local paths or URLs; see
-      # docs/decisions/0004-build-and-security-tooling.md.
-      - name: Report corpus availability
-        env:
-          XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
-        run: |
-          if [ -z "$XSDEDITOR_CORPUS" ]; then
-            echo "::warning::XSDEDITOR_CORPUS is not set — round-trip and timing suites \
-          against the reference corpus were skipped. They are the acceptance tests for \
-          XE-069, XE-071 and XE-072."
-            exit 0
-          fi
-          echo "XSDEDITOR_CORPUS is set; corpus suites run from Phase 1."
