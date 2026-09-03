@@ -76,7 +76,11 @@ artifact through Avalonia's Linux backend with a High-severity advisory, and it 
   so a dependency that reflects by name surfaces in CI rather than in an installer — the failure
   mode `0002` singled out as the worst place to find it. Trim warnings are **reported rather than
   gating** for now: Avalonia's own trim-annotation coverage has not been measured, and a gate set
-  before that measurement would fail on a third party's warnings. Tightening it to `-warnaserror`
+  before that measurement would fail on a third party's warnings — `Avalonia.DesignerSupport`
+  raises `IL2104` on the very first publish, which is exactly that case. Holding this position
+  takes an explicit `WarningsNotAsErrors` entry in the application project, because the
+  repository-wide `TreatWarningsAsErrors` reaches the trimmer too; without it the build would
+  have gated on trim warnings while this record said it did not. Tightening it back to an error
   is a Phase 2 item, once the real warning set is known.
 - SonarQube's absence is a recorded, dated decision with a revisit point, which is what
   `AGENTS.md` asks for in place of an implicit exception.
