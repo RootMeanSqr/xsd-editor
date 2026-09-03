@@ -1,8 +1,12 @@
 <Project>
 
-  <!-- Settings shared by every project. Publish properties live in XsdEditor.App. -->
+  <!-- Settings shared by every project. Publish properties live in XsdEditor.App.
+
+       TargetFramework is deliberately NOT set here. The SDK resolves framework
+       references before a value set at this level is visible, so trimming and AOT
+       checks compare against an empty TFM (NETSDK1124, NETSDK1210). It is declared
+       per project instead, which is the conventional placement in any case. -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
   <!-- Headless harness. CI measures parse, serialise and validation timings through this
        without needing a display. -->
   <PropertyGroup>

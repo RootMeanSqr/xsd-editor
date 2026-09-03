@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
   <!-- The schema model, parser, serialiser, index and commands. Deliberately carries no
        Avalonia reference: everything in 0003 of the plan is testable headless. -->
   <!-- 0002: trimmed publishing, and AOT-safe practice held to so that NativeAOT stays a
