@@ -11,5 +11,4 @@ decision, and its consequences.
 | Record                                                 | Decision                            |
 | ------------------------------------------------------ | ----------------------------------- |
 | [`0001-licensing.md`](decisions/0001-licensing.md)      | Apache-2.0, with paid maintenance   |
-
-The technology stack is the next one due.
+| [`0002-technology-stack.md`](decisions/0002-technology-stack.md) | .NET 10 and Avalonia       |

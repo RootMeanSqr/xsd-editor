@@ -9,9 +9,10 @@ current — it is the first thing an agent reads.
 optimised for the Venetian Blind schema style. See [`docs/requirements.md`](docs/requirements.md)
 for scope and goals.
 
-**The technology stack has not been chosen yet.** Do not scaffold an application, add dependencies,
-or create source directories until that decision is recorded in `docs/decisions/`. If a task seems
-to require picking a stack, stop and ask.
+**The stack is .NET 10 with Avalonia**, in C#, recorded in
+[`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md). Published
+self-contained, single-file and trimmed, under the JIT. `CommunityToolkit.Mvvm` is the MVVM layer.
+Nothing is scaffolded yet, but nothing blocks it either.
 
 ## Repository layout
 
@@ -25,12 +26,13 @@ to require picking a stack, stop and ask.
 | `CLA.md`    | Individual Contributor License Agreement         |
 | `CONTRIBUTING.md` | How work lands, and how to sign the CLA    |
 
-Source, test, and build directories will be added alongside the stack decision.
+Source, test, and build directories will be added when the first code lands.
 
 ## Build, test, lint
 
-None yet. When a stack is chosen, document the exact commands here — an agent should be able to
-verify a change without guessing.
+None yet — nothing is scaffolded. The commands will be the ordinary .NET ones (`dotnet build`,
+`dotnet test`, `dotnet format`); document them exactly, with the solution path, as soon as there is
+something to run. An agent should be able to verify a change without guessing.
 
 ## Conventions
 
@@ -64,8 +66,9 @@ Choices that are expensive to reverse — the stack, the parser, the persistence
 licence — get a short record in `docs/decisions/` (one file per decision: context, the decision,
 the consequences). Open questions live in `docs/requirements.md` until they are answered.
 
-The licence is settled: **Apache-2.0**, recorded in
-[`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md). The stack is not.
+Two are recorded so far: **Apache-2.0** in
+[`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md), and **.NET with Avalonia**
+in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md).
 
 ## Working style
 
@@ -75,6 +78,10 @@ The licence is settled: **Apache-2.0**, recorded in
   CVEs first — `XE-081` requires that none ship with a known unfixed vulnerability, and every
   dependency is inside the installed artifact with no runtime update path, so a library added here
   is a library to watch for the life of the product. Prefer the smaller dependency surface.
+- Check that the candidate is **trim-safe** as well. The application publishes trimmed, and we hold
+  to AOT-safe practice so that NativeAOT stays reachable (`0002`): a library that resolves types or
+  members by name through reflection fails in the installed artifact and not in development. Prefer
+  source-generator-based libraries over reflection-based ones.
 - Check the candidate's **licence** too, in the same pass. Anything shipped to users must permit
   distribution inside an Apache-2.0 product: MIT, BSD, ISC, Apache-2.0, MPL-2.0, and
   GPLv2-with-Classpath-Exception are fine; GPL and AGPL are not. LGPL is permitted only where the
