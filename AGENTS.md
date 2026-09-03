@@ -56,6 +56,13 @@ the consequences). Open questions live in `docs/requirements.md` until they are 
 
 - Ask before making an architectural choice the requirements do not already settle. Marking
   something as an open question is a valid outcome.
-- Do not add dependencies without saying why in the PR description.
+- Do not add dependencies without saying why in the PR description. Check the candidate for known
+  CVEs first — `XE-081` requires that none ship with a known unfixed vulnerability, and every
+  dependency is inside the installed artifact with no runtime update path, so a library added here
+  is a library to watch for the life of the product. Prefer the smaller dependency surface.
+- Do not merge with an unresolved Critical or High finding from either security check (`XE-081`):
+  composition scanning over dependencies, and static analysis over our own code. Medium and Low are
+  triaged, not gates. An exception to any of this is recorded in `docs/decisions/`, never left
+  implicit.
 - Do not invent requirements. If a detail is unspecified, add it to the open questions list rather
   than deciding silently.
