@@ -51,10 +51,9 @@ something to run. An agent should be able to verify a change without guessing.
   `Claude-Session:` trailers or `claude.ai/code/session_…` URLs. They resolve only for the account
   that created them, so in a public repository they are noise in the permanent record. Co-authorship
   trailers are fine; the session link is not.
-- **Markdown.** Wrap prose at roughly 99 columns so diffs stay reviewable in a side-by-side view.
-  Nothing enforces it, and nothing external requires it — GitHub soft-wraps rendered Markdown, so
-  the width matters only in the diff view. `docs/requirements.md` is an accepted exception: it is
-  maintained unwrapped elsewhere and reflowing it here would conflict on every import.
+- **Markdown.** No line-width rule. Renderers and diff viewers soft-wrap, so hard wrapping buys
+  nothing and costs a reflow every time a sentence is edited. Wrap or don't; leave existing files
+  as they are rather than reflowing them for its own sake.
 - **Documentation.** A change to behaviour and the docs describing it belong in the same commit.
 - **Requirement IDs.** Requirements in `docs/requirements.md` carry stable `XE-nnn` identifiers. Cite
   them in commits, tests, and issues rather than section numbers. A new requirement takes the next
