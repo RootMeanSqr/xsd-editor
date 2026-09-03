@@ -40,7 +40,12 @@ public class SourceSpanTests
     public void TextIn_returns_the_covered_characters()
     {
         const string Source = "<xs:element name=\"Foo\" />";
-        var span = SourceSpan.FromBounds(17, 20);
+
+        // Derived rather than hand-counted: a literal offset here tests the arithmetic of
+        // whoever wrote the test as much as the code, and the first version of this got it
+        // wrong by one, landing on the opening quote.
+        var start = Source.IndexOf("Foo", StringComparison.Ordinal);
+        var span = SourceSpan.FromBounds(start, start + "Foo".Length);
 
         Assert.Equal("Foo", span.TextIn(Source).ToString());
     }
