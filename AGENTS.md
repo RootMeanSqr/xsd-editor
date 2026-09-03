@@ -41,6 +41,10 @@ verify a change without guessing.
   and commit once the thread of work is finished — do not commit after every exchange.
 - **Pull requests.** Everything lands via PR, including documentation. Open as a draft while work
   is in progress. A contributor signs [`CLA.md`](CLA.md) before their first PR is merged.
+- **Squash merges only.** A PR lands on `main` as a single commit. Merge commits and rebase merges
+  are disabled at the repository level (Settings → General → Pull Requests), so `main` reads as one
+  commit per change rather than as the working history of a branch. Write the PR title and
+  description to be the commit message they become.
 - **No Claude session links.** Commit messages and pull request descriptions must not carry
   `Claude-Session:` trailers or `claude.ai/code/session_…` URLs. They resolve only for the account
   that created them, so in a public repository they are noise in the permanent record. Co-authorship
