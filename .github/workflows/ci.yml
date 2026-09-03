@@ -86,13 +86,28 @@ jobs:
       # build — the response is to update, replace, or record an exception in docs/decisions.
       - name: Vulnerable package scan
         run: |
+          set +e
           dotnet list XsdEditor.slnx package --vulnerable --include-transitive \
             > vulnerable.txt 2>&1
+          scan_status=$?
+          set -e
           cat vulnerable.txt
-          if grep -qiE '> +[A-Za-z0-9._-]+ +.*(Critical|High|Moderate|Low)' vulnerable.txt; then
-            echo "::error::A dependency has a known vulnerability. See the report above."
+
+          # A broken scanner and a clean tree both produce no findings, so they are
+          # distinguished explicitly: reporting "no vulnerabilities" because the tool
+          # failed to run is the one outcome this check must never produce.
+          if [ "$scan_status" -ne 0 ]; then
+            echo "::error::The vulnerability scan did not run to completion \
+          (dotnet list exited $scan_status). This is a tooling failure, not a clean result."
             exit 1
           fi
+
+          if grep -qiE '^ *> +[A-Za-z0-9._-]+ +.*(Critical|High|Moderate|Low)' vulnerable.txt; then
+            echo "::error::A dependency has a known vulnerability (XE-081). See the report above."
+            exit 1
+          fi
+
+          echo "No known vulnerabilities in the dependency graph."
       # Apache-2.0 4d obliges us to carry each dependency's NOTICE into the installer,
       # and 0001 restricts which licences may ship at all.
       - name: Licence inventory

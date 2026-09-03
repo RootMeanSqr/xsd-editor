@@ -24,7 +24,7 @@
     <Deterministic>true</Deterministic>
 
     <!-- A committed lock file is what makes the XE-081 composition scan reproducible.
-         CI switches to `--locked-mode` once the first restore has committed them. -->
+         CI switches restore to locked mode once the first restore has committed them. -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 

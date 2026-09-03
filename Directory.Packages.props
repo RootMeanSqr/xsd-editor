@@ -16,6 +16,19 @@
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
   </ItemGroup>
 
+  <!-- Transitive pins. Not referenced directly by any project: these lift a dependency
+       that something above brings in at a vulnerable version, which XE-081 forbids
+       shipping. Central transitive pinning is what makes a PackageVersion alone
+       sufficient. Remove a pin only once the parent package has moved past it. -->
+  <ItemGroup Label="Transitive pins (XE-081)">
+    <!-- Tmds.DBus.Protocol: MIT. Avalonia 11.3.0's Linux backend brings in 0.21.2, which
+         carries GHSA-xrw6-gwf8-vvr9 (High). NuGet's advisory index gives the affected
+         ranges as (,0.21.3) and [0.22.0,0.92.0), so 0.21.3 is the patch for the 0.21.x
+         line Avalonia builds against — the smallest move that clears the advisory,
+         rather than a jump to 0.9x that Avalonia has not been tested against. -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
   <ItemGroup Label="Build and test only — never reaches the artifact">
     <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
