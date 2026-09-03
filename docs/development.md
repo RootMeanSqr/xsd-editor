@@ -36,7 +36,29 @@ $env:XSDEDITOR_CORPUS = 'C:\uci\UCI_Versioning_v2_5_0.xsd;C:\uci\UCI_MessageDefi
 
 **The corpus is wholly CRLF.** If you keep a local copy in a Git repository, make sure it is not line-ending normalised on checkout, or every round-trip test will fail against it for a reason that has nothing to do with your change.
 
+Verify a local copy the same way CI does — same script, so a green run here means a green run
+there:
+
+```bash
+scripts/verify-corpus.sh
+```
+
+It fetches or copies each entry, checks the count, records SHA-256s, and fails if anything arrived
+line-ending normalised.
+
 Without the variable the build and the whole unit suite still pass — only the corpus round-trip and timing suites skip, loudly. Since those are the acceptance tests for the measured serialisation requirements, run them before proposing a change to the parser, model or serialiser.
+
+## Before adding a dependency
+
+`CONTRIBUTING.md` asks every candidate to clear a CVE check. That check is a script, and CI runs
+the same one:
+
+```bash
+scripts/check-vulnerable-packages.sh
+```
+
+The gate itself is `NuGetAudit`, which already fails `dotnet restore` on an affected package; this
+produces the report and positively confirms a clean graph.
 
 ## Publishing a self-contained build
 

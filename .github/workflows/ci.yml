@@ -26,6 +26,15 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
+  # Extracting CI logic into scripts/ is what makes this possible: bash embedded in a
+  # YAML block scalar is invisible to every linter.
+  shellcheck:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --severity=style scripts/*.sh
+
   format:
     name: Format
     runs-on: ubuntu-latest
@@ -94,42 +103,18 @@ jobs:
       - run: dotnet restore XsdEditor.slnx
       # XE-081: no dependency ships with a known unfixed vulnerability. Any hit fails the
       # build — the response is to update, replace, or record an exception in docs/decisions.
-      # The gate itself is NuGetAudit in Directory.Build.props, which already failed the
-      # restore above if anything is advisory-affected. This step exists to produce the
-      # report as an artifact, and asserts the clean result POSITIVELY: inferring "no
-      # vulnerabilities" from the absence of a severity word would report a scan that
-      # never ran as a pass, which is the one thing a security gate must not do.
+      # The gate is NuGetAudit in Directory.Build.props, which already failed the restore
+      # above if anything is advisory-affected. This publishes the report and asserts the
+      # clean result positively. Same script a contributor runs before adding a dependency.
       - name: Vulnerable package report
-        run: |
-          set +e
-          dotnet list XsdEditor.slnx package --vulnerable --include-transitive \
-            > vulnerable.txt 2>&1
-          scan_status=$?
-          set -e
-          cat vulnerable.txt
+        run: scripts/check-vulnerable-packages.sh XsdEditor.slnx vulnerable.txt
 
-          if [ "$scan_status" -ne 0 ]; then
-            echo "::error::The vulnerability report did not run to completion (exit $scan_status)."
-            exit 1
-          fi
-          if grep -q 'NU1905' vulnerable.txt; then
-            echo "::error::The audit source could not be consulted (NU1905). Not a clean result."
-            exit 1
-          fi
-          if ! grep -q 'has no vulnerable packages given the current sources' vulnerable.txt; then
-            echo "::error::Could not positively confirm a clean dependency graph (XE-081)."
-            exit 1
-          fi
-          echo "Confirmed: no known vulnerabilities in the dependency graph."
-
-      # NOTE: this is an inventory, not a licence check. `dotnet list package` reports no
-      # licence data, so 0001's allowlist and the Apache-2.0 4d NOTICE obligation are still
-      # enforced by hand, against the annotations in Directory.Packages.props. Automating
-      # them needs a tool this project has not chosen yet (0004).
+      # NOTE: an inventory, not a licence check. `dotnet list package` reports no licence
+      # data, so 0001's allowlist and the Apache-2.0 4d NOTICE obligation remain manual,
+      # against the annotations in Directory.Packages.props (0004).
       - name: Package inventory (informational)
-        run: |
-          dotnet list XsdEditor.slnx package --include-transitive > packages.txt 2>&1
-          cat packages.txt
+        run: dotnet list XsdEditor.slnx package --include-transitive | tee packages.txt
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -145,78 +130,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The corpus is a controlled interface standard and is never committed; XSDEDITOR_CORPUS
-      # holds the pinned URLs (docs/decisions/0004-build-and-security-tooling.md). The suites
-      # that consume it arrive in Phase 1; what this job does now is prove the fixture is
-      # reachable and unchanged, so that a moved or edited upstream file is a clear failure
-      # here rather than a mystery inside a parser test later.
+      # The corpus is a controlled interface standard and is never committed;
+      # XSDEDITOR_CORPUS holds the pinned URLs (0004). The suites that consume it arrive in
+      # Phase 1; what this proves now is that the fixture is reachable and unchanged, so a
+      # moved or edited upstream file fails here rather than deep inside a parser test.
+      # Skips loudly when the variable is unset.
       - name: Fetch and verify
         env:
           XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
-        run: |
-          if [ -z "$XSDEDITOR_CORPUS" ]; then
-            echo "::warning::XSDEDITOR_CORPUS is not set — the reference corpus was not fetched \
-          or verified. The round-trip and timing suites are the acceptance tests for XE-069, \
-          XE-071, XE-072 and XE-083, and none of them ran."
-            exit 0
-          fi
-
-          mkdir -p corpus && cd corpus
-          # Semicolon-separated: a colon cannot separate entries that may be URLs.
-          # The trailing newline matters: without it `read` returns false on the final
-          # entry and drops it silently, which is a bug this job had and the count
-          # assertion below now makes impossible to reintroduce.
-          printf '%s\n' "$XSDEDITOR_CORPUS" | tr ';' '\n' > ../entries.txt
-          expected=$(grep -c '[^[:space:]]' ../entries.txt)
-          echo "entries: $expected"
-
-          first=1
-          while IFS= read -r entry; do
-            [ -n "$entry" ] || continue
-            name=$(basename "$entry")
-            case "$entry" in
-              http*)
-                # --fail so an HTML error page is never mistaken for a schema.
-                curl -sS --fail --location --max-time 300 "$entry" -o "$name" ;;
-              *)
-                cp "$entry" "$name" ;;
-            esac
-            if [ "$first" = 1 ]; then echo "entry point: $name"; first=0; fi
-          done < ../entries.txt
-
-          echo "--- fetched ---"
-          ls -l
-          actual=$(ls -1 | wc -l)
-          if [ "$actual" -ne "$expected" ]; then
-            echo "::error::Expected $expected corpus files but fetched $actual. A dropped \
-          entry would leave the closure incomplete, and the suites would then measure \
-          something other than the corpus."
-            exit 1
-          fi
-          sha256sum ./* | tee ../checksums.txt
-
-          # The bytes are the thing under test (XE-067, XE-083), so assert nothing normalised
-          # them in transit: every corpus file is wholly CRLF with no bare LF.
-          python3 - <<'PY_EOF'
-          import pathlib, sys
-          bad = False
-          for f in sorted(pathlib.Path('.').glob('*.xsd')):
-              b = f.read_bytes()
-              crlf = b.count(b'\r\n')
-              bare = b.count(b'\n') - crlf
-              print(f"{f.name}: bytes={len(b)} CRLF={crlf} bare-LF={bare}")
-              if bare:
-                  print(f"::error::{f.name} contains {bare} bare LF; the corpus is wholly CRLF, "
-                        "so something normalised it in transit and every round-trip test "
-                        "against it would be meaningless.")
-                  bad = True
-          sys.exit(1 if bad else 0)
-          PY_EOF
+        run: scripts/verify-corpus.sh corpus
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: corpus-checksums
-          path: checksums.txt
+          path: corpus/checksums.txt
           if-no-files-found: ignore
           retention-days: 30
