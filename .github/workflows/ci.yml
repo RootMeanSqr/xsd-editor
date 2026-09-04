@@ -32,14 +32,14 @@ jobs:
     name: Shell scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: shellcheck --severity=style scripts/*.sh
 
   format:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -54,7 +54,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -76,7 +76,7 @@ jobs:
           # is published too. Cross-RID publish from the arm64 runner; it is not run there.
           - { os: macos-latest, rid: osx-x64 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -99,7 +99,7 @@ jobs:
     name: Supply chain (XE-081)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
@@ -131,7 +131,7 @@ jobs:
     name: Reference corpus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The corpus is a controlled interface standard and is never committed;
       # XSDEDITOR_CORPUS holds the pinned URLs (0004). The suites that consume it arrive in
