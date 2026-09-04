@@ -1,0 +1,58 @@
+# Formatting is enforced by `dotnet format --verify-no-changes` in CI, so this file is
+# the single definition of house style. Keep it small: a rule nobody can explain is a
+# rule that gets suppressed.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,csproj,props,targets,slnx,axaml,xaml,xml}]
+indent_size = 2
+
+[*.xsd]
+# Schema fixtures are round-trip test inputs whose exact bytes are the thing under test
+# (XE-067, XE-083), which is also why .gitattributes marks them -text. An editor applying
+# the [*] rules would convert a CRLF fixture to LF and strip the trailing whitespace that
+# the XE-084 character-data fixtures exist to prove is preserved — destroying the test
+# case on save, silently, since dotnet format never reads these files.
+indent_size = 2
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = false
+
+[*.md]
+# AGENTS.md: no line-width rule, and trailing spaces are a Markdown line break.
+trim_trailing_whitespace = false
+
+[*.cs]
+# Language conventions
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_prefer_braces = true:warning
+csharp_style_var_for_built_in_types = false:silent
+csharp_style_var_when_type_is_apparent = true:silent
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
+csharp_style_prefer_readonly_struct = true:warning
+csharp_prefer_static_local_function = true:warning
+
+# Naming: private fields carry a leading underscore.
+dotnet_naming_rule.private_fields_underscored.severity = warning
+dotnet_naming_rule.private_fields_underscored.symbols = private_fields
+dotnet_naming_rule.private_fields_underscored.style = underscore_camel_case
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+[tests/**/*.cs]
+# Test method names read as sentences, so the naming rule above does not apply to them.
+dotnet_diagnostic.CA1707.severity = none

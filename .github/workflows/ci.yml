@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # XE-081 is about known-unfixed vulnerabilities, which are disclosed on their own
+  # schedule rather than ours. Without this, an advisory published after the last merge
+  # stays invisible until someone happens to open a pull request.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  # The .NET CLI reports telemetry at build time. It never reaches the artifact
+  # (XE-075 constrains the application), but there is no reason to send it from CI.
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  # Extracting CI logic into scripts/ is what makes this possible: bash embedded in a
+  # YAML block scalar is invisible to every linter.
+  shellcheck:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --severity=style scripts/*.sh
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      - run: dotnet format XsdEditor.slnx --verify-no-changes --no-restore
+
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      - run: dotnet build XsdEditor.slnx --configuration Release --no-restore
+      - run: dotnet test XsdEditor.slnx --configuration Release --no-build --verbosity normal
+
+  publish:
+    name: Publish self-contained (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+          # osx-x64 is declared in RuntimeIdentifiers and XE-013 covers Intel Macs, so it
+          # is published too. Cross-RID publish from the arm64 runner; it is not run there.
+          - { os: macos-latest, rid: osx-x64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # XE-074: the artifact must build self-contained, single-file and trimmed on every
+      # platform, so a dependency that reflects types by name surfaces here rather than in
+      # an installer. Trim warnings are reported, not yet gating — Avalonia's own trim
+      # annotation coverage has not been measured, and a gate we have not measured would
+      # fail on somebody else's warnings.
+      - run: >
+          dotnet publish src/XsdEditor.App/XsdEditor.App.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xsd-editor-${{ matrix.rid }}
+          path: src/XsdEditor.App/bin/Release/net10.0/${{ matrix.rid }}/publish/
+          retention-days: 7
+
+  security:
+    name: Supply chain (XE-081)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore XsdEditor.slnx
+      # XE-081: no dependency ships with a known unfixed vulnerability. Any hit fails the
+      # build — the response is to update, replace, or record an exception in docs/decisions.
+      # The gate is NuGetAudit in Directory.Build.props, which already failed the restore
+      # above if anything is advisory-affected. This publishes the report and asserts the
+      # clean result positively. Same script a contributor runs before adding a dependency.
+      - name: Vulnerable package report
+        run: scripts/check-vulnerable-packages.sh XsdEditor.slnx vulnerable.txt
+
+      # NOTE: an inventory, not a licence check. `dotnet list package` reports no licence
+      # data, so 0001's allowlist and the Apache-2.0 4d NOTICE obligation remain manual,
+      # against the annotations in Directory.Packages.props (0004).
+      - name: Package inventory (informational)
+        run: dotnet list XsdEditor.slnx package --include-transitive | tee packages.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supply-chain-report
+          path: |
+            vulnerable.txt
+            packages.txt
+          retention-days: 30
+
+  corpus:
+    name: Reference corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The corpus is a controlled interface standard and is never committed;
+      # XSDEDITOR_CORPUS holds the pinned URLs (0004). The suites that consume it arrive in
+      # Phase 1; what this proves now is that the fixture is reachable and unchanged, so a
+      # moved or edited upstream file fails here rather than deep inside a parser test.
+      # Skips loudly when the variable is unset.
+      - name: Fetch and verify
+        env:
+          XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
+        run: scripts/verify-corpus.sh corpus
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-checksums
+          path: corpus/checksums.txt
+          if-no-files-found: ignore
+          retention-days: 30

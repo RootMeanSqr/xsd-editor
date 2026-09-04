@@ -17,4 +17,18 @@ Thumbs.db
 *.log
 tmp/
 
-# Language- and tool-specific ignores are added once the stack is chosen.
+# .NET
+bin/
+obj/
+[Bb]uild[Ll]og.*
+*.user
+*.suo
+artifacts/
+publish/
+TestResults/
+BenchmarkDotNet.Artifacts/
+.vs/
+
+# Local corpus fixtures. The reference corpus is never committed; XSDEDITOR_CORPUS
+# points at it instead (docs/decisions/0004-build-and-security-tooling.md).
+corpus/

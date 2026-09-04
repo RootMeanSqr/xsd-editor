@@ -1,0 +1,45 @@
+// xsd-editor preferences — example file, carrying the shipped defaults.
+//
+// Copy this to the platform-conventional per-user config location (XE-046), or pass it to
+// the CLI with --prefs. Comments and trailing commas are accepted on read; every key is
+// optional and an absent key takes the default shown here, so a file setting one preference
+// need contain only that one.
+//
+// The defaults below reproduce the reference corpus byte-for-byte (XE-085), measured.
+{
+  // Bumped only when a key changes meaning or is removed, never when one is added.
+  // A file from a newer schemaVersion than the application knows is refused rather than
+  // half-applied; an older one is migrated.
+  "schemaVersion": 1,
+
+  "formatting": {
+    // "tab" | "spaces"
+    "indentCharacter": "tab",
+
+    // 1-8. Used only when indentCharacter is "spaces"; one tab is always one level,
+    // and how wide a tab displays is a Text View setting, not a document one.
+    "spacesPerLevel": 4,
+
+    // "self-closing"        -> <xs:pattern value="..."/>
+    // "self-closing-spaced" -> <xs:pattern value="..." />
+    // "paired"              -> <xs:pattern value="..."></xs:pattern>
+    "emptyElementForm": "self-closing",
+
+    // "single-line" keeps every attribute on the start-tag line.
+    // "one-per-line" breaks when the count exceeds attributeWrapThreshold.
+    "attributeLayout": "single-line",
+    "attributeWrapThreshold": 4,
+
+    // Whether the file ends with a line ending.
+    "finalNewline": true,
+
+    // XE-071. A partial order: these first, in this order; then every other XSD
+    // attribute in source order; then foreign-namespace attributes in source order.
+    "attributeOrder": ["name", "type", "minOccurs", "maxOccurs"]
+  },
+
+  // XE-086. "keep-source" uses each file's own endings (XE-083) and is the setting under
+  // which a schema saves identically on every platform. "system" writes the host
+  // convention, and Format Document then converts the whole file.
+  "lineEndings": "keep-source"
+}

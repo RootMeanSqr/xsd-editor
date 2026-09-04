@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/XsdEditor.Core/XsdEditor.Core.csproj" />
+    <Project Path="src/XsdEditor.Cli/XsdEditor.Cli.csproj" />
+    <Project Path="src/XsdEditor.App/XsdEditor.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/XsdEditor.Core.Tests/XsdEditor.Core.Tests.csproj" />
+  </Folder>
+</Solution>

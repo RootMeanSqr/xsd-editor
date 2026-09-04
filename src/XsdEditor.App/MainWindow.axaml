@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="XsdEditor.App.MainWindow"
+        Title="XSD Editor"
+        Width="1280" Height="800">
+
+    <!-- The shell — menu bar, ribbon, tabs and the four panels — is Phase 2. This window
+         exists so that the publish path in the project file is exercised from Phase 0. -->
+    <TextBlock HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               Text="XSD Editor" />
+
+</Window>

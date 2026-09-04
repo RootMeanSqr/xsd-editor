@@ -1,0 +1,21 @@
+# .editorconfig sets end_of_line = lf and `dotnet format --verify-no-changes` enforces it,
+# but the format job runs on Linux only. Without this, a Windows contributor on the default
+# core.autocrlf=true checks out CRLF and their first format run rewrites every file.
+* text=auto eol=lf
+
+# Schema fixtures are round-trip test inputs whose exact bytes are the thing under test
+# (XE-067, XE-083). Git must never normalise their line endings: doing so would make a
+# CRLF fixture pass on Linux and fail on Windows, or vice versa.
+*.xsd -text
+
+# Windows-only scripts must keep CRLF to run.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Never normalise binary content.
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.zip binary
