@@ -12,7 +12,7 @@ Three questions came with the first commit, and none of them belongs in a commit
 
 ### The reference corpus is never committed; `XSDEDITOR_CORPUS` locates it
 
-The UCI v2.5 files are a controlled interface standard, and this is a public Apache-2.0 repository. `XSDEDITOR_CORPUS` names the files instead. A developer points it at a local checkout; CI reads it from a repository variable.
+The corpus files are a controlled interface standard, and this is a public Apache-2.0 repository. `XSDEDITOR_CORPUS` names the files instead. A developer points it at a local checkout; CI reads it from a repository variable.
 
 **Format.** A list of entries separated by a **semicolon on every platform**. Each entry is either a local path or an `https:` URL, and the two may be mixed.
 
