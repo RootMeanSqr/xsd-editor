@@ -2,7 +2,7 @@
 
 Everything here is developer-side tooling, which `XE-074` leaves unconstrained. The constraint it does impose — that an *end user* fetches no runtime, SDK or package manager — is satisfied by the publish settings in `src/XsdEditor.App/XsdEditor.App.csproj` and verified by CI.
 
-This file owns **installation and environment**. The command list lives in [`../AGENTS.md`](../AGENTS.md), the corpus rationale in [`decisions/0004`](decisions/0004-build-and-security-tooling.md), and the pull-request checklist in [`../CONTRIBUTING.md`](../CONTRIBUTING.md); none of them is repeated here.
+This file owns **installation, environment, and how to build**. The corpus rationale is in [`decisions/0004`](decisions/0004-build-and-security-tooling.md) and the pull-request checklist in [`../CONTRIBUTING.md`](../CONTRIBUTING.md); neither is repeated here. [`../AGENTS.md`](../AGENTS.md) carries the same command list as a working reference — it is the one thing deliberately in both places, since an agent reads that file and not this one.
 
 ## Prerequisites
 
@@ -18,7 +18,23 @@ Install the SDK from <https://dotnet.microsoft.com/download/dotnet/10.0>, or wit
 dotnet --version   # expect 10.0.1xx
 ```
 
-Nothing else is needed: no database, no service, no container. Build and test commands are in [`../AGENTS.md`](../AGENTS.md).
+Nothing else is needed: no database, no service, no container.
+
+## Debug build
+
+The ordinary loop, and what CI runs on all three platforms before it publishes anything. Debug is the default configuration, so none of these needs a flag:
+
+```bash
+dotnet build XsdEditor.slnx                       # warnings are errors
+dotnet test  XsdEditor.slnx
+dotnet run --project src/XsdEditor.App            # the editor
+dotnet run --project src/XsdEditor.Cli -- --help  # the headless harness
+dotnet format XsdEditor.slnx                      # CI runs --verify-no-changes
+```
+
+It builds incrementally, keeps full debugging information, and runs against the SDK's shared runtime, so a rebuild is seconds rather than a relink of the whole framework. Nothing in `XSDEDITOR_CORPUS`, and no runtime identifier, is needed to build or to run the unit suite.
+
+The publish properties in `src/XsdEditor.App/XsdEditor.App.csproj` — self-contained, single-file, trimmed — apply on **publish only** and do not affect this. That is exactly why the release build below is a separate step rather than a slower version of this one.
 
 ## The reference corpus
 
@@ -60,12 +76,17 @@ scripts/check-vulnerable-packages.sh
 The gate itself is `NuGetAudit`, which already fails `dotnet restore` on an affected package; this
 produces the report and positively confirms a clean graph.
 
-## Publishing a self-contained build
+## Release build
 
-What an end user would receive:
+**A check, not the way you build.** It produces what an end user would receive — self-contained, single-file and trimmed (`XE-074`) — and it relinks the runtime for the named platform, so it is far slower than a Debug build and harder to debug. Nothing in day-to-day work needs it.
 
 ```bash
 dotnet publish src/XsdEditor.App -c Release -r linux-x64   # or win-x64, osx-arm64, osx-x64
 ```
 
-Run this before proposing a change that adds a dependency: a library that resolves types by name shows up here rather than in development, which is the failure [`decisions/0002`](decisions/0002-technology-stack.md) warns about. Trim warnings are currently **reported, not gating** — see [`decisions/0004`](decisions/0004-build-and-security-tooling.md) for why, and expect that to tighten in Phase 2.
+**Run it when the answer could differ from Debug**, which is a narrower set than it sounds:
+
+- **Before proposing a change that adds a dependency.** Trimming runs only here, so a library that resolves types or members by name builds and runs perfectly in Debug and fails in the installed artifact — the failure [`decisions/0002`](decisions/0002-technology-stack.md) warns about, and the reason `AGENTS.md` asks every candidate for a trim-safety check.
+- **When verifying what ships**: the `XE-075` no-egress audit and the packaging claims are properties of this output, not of `bin/Debug`.
+
+Trim warnings are currently **reported, not gating** — see [`decisions/0004`](decisions/0004-build-and-security-tooling.md) for why, and expect that to tighten in Phase 2. CI publishes all four runtime identifiers on every pull request, so a trim failure surfaces there even if you do not run this locally.
