@@ -20,21 +20,15 @@ namespace XsdEditor.Core.Tests.Syntax;
 /// green without having run is worse than one that reports nothing.
 /// </para>
 /// </remarks>
-public class CorpusRoundTripTests(ITestOutputHelper output)
+public class CorpusRoundTripTests
 {
-    private readonly ITestOutputHelper _output = output;
-
-    [Fact]
+    [SkippableFact]
     public void Every_corpus_file_round_trips_byte_for_byte()
     {
         var files = CorpusFiles();
-        if (files.Count == 0)
-        {
-            WarnCorpusAbsent(
-                "The corpus round-trip suite is the acceptance test for XE-069 and XE-083, "
-                + "and it did not run.");
-            return;
-        }
+        SkipIfCorpusAbsent(
+            files,
+            "The corpus round-trip suite is the acceptance test for XE-069 and XE-083.");
 
         foreach (var file in files)
         {
@@ -62,15 +56,11 @@ public class CorpusRoundTripTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public void The_corpus_parses_without_diagnostics()
     {
         var files = CorpusFiles();
-        if (files.Count == 0)
-        {
-            WarnCorpusAbsent("The corpus well-formedness check did not run.");
-            return;
-        }
+        SkipIfCorpusAbsent(files, "The corpus well-formedness check needs the corpus.");
 
         foreach (var file in files)
         {
@@ -122,30 +112,24 @@ public class CorpusRoundTripTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Reports that the corpus was not available, as loudly as this runner allows.
+    /// Skips, rather than passes, when the corpus is not available.
     /// </summary>
+    /// <param name="files">The resolved corpus files. Empty means unavailable.</param>
+    /// <param name="consequence">What did not get tested, for the skip reason.</param>
     /// <remarks>
-    /// xUnit 2.9 has no runtime skip — <c>Assert.Skip</c> arrived in v3 — so the choice here
-    /// is a new test dependency or the convention this repository already uses.
-    /// <c>scripts/verify-corpus.sh</c> warns and exits 0 when <c>XSDEDITOR_CORPUS</c> is
-    /// unset, emitting a <c>::warning::</c> annotation under GitHub Actions and a plain
-    /// message otherwise, so the same shape is used here rather than inventing a second one.
-    /// Moving these to a real skipped result is a tooling decision, not something to settle
-    /// silently inside a test file.
+    /// A suite that reports green without having run is worse than one that reports
+    /// nothing, which is why <c>AGENTS.md</c> says these skip — loudly. xUnit 2.9 has no
+    /// runtime skip of its own (<c>Assert.Skip</c> arrived in v3), so
+    /// <c>Xunit.SkippableFact</c> supplies it; the package is test-only and never reaches
+    /// the artifact, which is what puts its MS-PL licence inside <c>AGENTS.md</c>'s rules.
     /// </remarks>
-    private void WarnCorpusAbsent(string consequence)
+    private static void SkipIfCorpusAbsent(List<string> files, string consequence)
     {
-        var message =
+        Skip.If(
+            files.Count == 0,
             "XSDEDITOR_CORPUS is not set, or names no file present on disk. "
             + consequence
-            + " See docs/decisions/0004-build-and-security-tooling.md.";
-
-        _output.WriteLine(message);
-
-        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
-        {
-            Console.WriteLine($"::warning::{message}");
-        }
+            + " See docs/decisions/0004-build-and-security-tooling.md.");
     }
 
     private static string? FindFetched(string name)
