@@ -9,7 +9,7 @@
        Apache-2.0 4d. This list is the inventory the composition scan and the SBOM read. -->
   <ItemGroup Label="Shipped in the artifact">
     <!-- Avalonia: MIT -->
-    <PackageVersion Include="Avalonia" Version="11.3.0" />
+    <PackageVersion Include="Avalonia" Version="12.1.2" />
     <PackageVersion Include="Avalonia.Desktop" Version="11.3.0" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.0" />
     <!-- CommunityToolkit.Mvvm: MIT, source-generator based (0002) -->
