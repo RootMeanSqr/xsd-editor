@@ -32,3 +32,8 @@ BenchmarkDotNet.Artifacts/
 # Local corpus fixtures. The reference corpus is never committed; XSDEDITOR_CORPUS
 # points at it instead (docs/decisions/0004-build-and-security-tooling.md).
 corpus/
+
+# The composition-scan report. scripts/check-vulnerable-packages.sh writes it into the
+# repository root, so running the check locally the way CI does would otherwise leave an
+# untracked file behind for the next person to wonder about.
+vulnerable.txt
