@@ -66,7 +66,7 @@ Solution layout, build configuration, CI, and the documents above. What follows 
 
 The largest and most load-bearing phase. Nothing here needs a UI.
 
-### 1a. Lossless syntax layer — REVIEW
+### 1a. Lossless syntax layer — DONE
 
 `XE-067`–`XE-069` demand comments, whitespace, and **original character-reference spelling** survive a write, and `XE-031` demands a partial parse of a malformed buffer. A DOM cannot do this; a **Roslyn-style green/red tree over the raw text** can. Every node owns an exact source span including trivia, so serialising an untouched node is a byte copy of its span, and only modified nodes are re-rendered. Lossless preservation stops being a feature to implement and becomes the default behaviour.
 
