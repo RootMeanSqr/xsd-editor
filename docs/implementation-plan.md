@@ -8,14 +8,21 @@ One phase is in work at a time. Update this table in the pull request that chang
 
 | Phase | State | |
 | --- | --- | --- |
-| **0** — Repository and CI scaffolding | **DONE** | Merged; exit criteria met |
+| **0** — Repository and CI scaffolding | **DONE** | |
 | **1** — Syntax tree, schema model, serialiser, commands, index | **IN WORK** | |
 | **2** — GUI scaffolding | TODO | |
 | **3** — Text View and the AvaloniaEdit spike | TODO | Blocked on `0003`'s spike, which it runs |
 | **4** — Design View | TODO | |
 | **5** — Whole-schema tools, packaging, release | TODO | |
 
-A phase moves to **DONE** only when its *Exit* line is satisfied, not when its code lands. Where a phase records blockers, they are named in the last column so that "TODO" never hides "cannot start".
+| State | Means |
+| --- | --- |
+| **TODO** | Not started. A blocker, if any, is named in the table above, so that TODO never hides "cannot start" |
+| **IN WORK** | Started and not yet code complete |
+| **LANDED** | Code complete, but the phase's *Exit* line is not yet satisfied — a measurement not taken, a spike not run, a design not written |
+| **DONE** | The *Exit* line is satisfied |
+
+**LANDED and DONE are separate because shipping the code is not the same as meeting the bar.** Every phase's *Exit* line names things that are not code — timings recorded, a formatter exercised by hand, a spike measured, a design written — and a phase that collapsed the two would count itself finished with those outstanding. LANDED is the honest state for "there is nothing left to write, and it is not finished".
 
 ## Context
 
