@@ -19,10 +19,10 @@ One phase is in work at a time. Update this table in the pull request that chang
 | --- | --- |
 | **TODO** | Not started. A blocker, if any, is named in the table above, so that TODO never hides "cannot start" |
 | **IN WORK** | Started and not yet code complete |
-| **LANDED** | Code complete, but the phase's *Exit* line is not yet satisfied — a measurement not taken, a spike not run, a design not written |
+| **REVIEW** | Code complete and awaiting judgement against the phase's *Exit* line — a measurement not yet taken, a spike not run, a design not written, or a pull request not yet merged |
 | **DONE** | The *Exit* line is satisfied |
 
-**LANDED and DONE are separate because shipping the code is not the same as meeting the bar.** Every phase's *Exit* line names things that are not code — timings recorded, a formatter exercised by hand, a spike measured, a design written — and a phase that collapsed the two would count itself finished with those outstanding. LANDED is the honest state for "there is nothing left to write, and it is not finished".
+**REVIEW and DONE are separate because writing the code is not the same as meeting the bar.** Every phase's *Exit* line names things that are not code — timings recorded, a formatter exercised by hand, a spike measured, a design written — and a phase that collapsed the two would count itself finished with those outstanding. REVIEW is the honest state for "there is nothing left to write, and it is not finished", and it covers the ordinary case where the work is sitting in an open pull request.
 
 ## Context
 
