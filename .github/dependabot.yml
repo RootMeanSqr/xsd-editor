@@ -2,6 +2,32 @@
 # dependency is inside the installed artifact with no runtime update path — so an update
 # has to reach us before a release, not after. Dependabot raises the pull request; the
 # CVE, licence and trim-safety checks in AGENTS.md still apply to it like any other.
+#
+# Grouping exists because a version is not always a property of one package. Avalonia
+# ships its family in lockstep, so a bump that moves some of it and leaves the rest is a
+# configuration nobody upstream tests.
+#
+# What was observed, stated as observation: on the first run Dependabot opened one pull
+# request for Avalonia alone, superseded it with a second that added
+# Avalonia.Themes.Fluent, and left Avalonia.Desktop on 11.3.0 in both — although
+# Avalonia.Desktop 12.1.2 exists on the feed. Why it was left out is not established, so
+# the groups below are not a proven fix for that specific omission. What they do is make
+# the whole family the default unit of a pull request, which is the right shape whatever
+# the cause.
+#
+# They are not an enforcement mechanism, and should not be read as one. A group opens a
+# pull request with whatever subset Dependabot resolves; a member it drops is dropped
+# silently, and CentralPackageTransitivePinningEnabled will restore the mismatch without
+# complaint. Until a check asserts that every Avalonia* PackageVersion carries one
+# version, the invariant is a review responsibility rather than a build one.
+#
+# Every group is declared twice, once per applies-to value, with the patterns written out
+# rather than shared through a YAML anchor: the duplication is cheap, and a config this
+# file's own premise depends on is the wrong place to bet on how GitHub's parser handles
+# aliases. `applies-to` defaults to
+# version-updates, so a group without it leaves security updates ungrouped — which would
+# leave the XE-081 path, the one that matters most here, raising exactly the partial
+# pull requests the rest of this file is trying to prevent.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -11,6 +37,38 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: chore
+    groups:
+      # The whole family, every update type. A major is grouped for the same reason a
+      # patch is — it is one decision, and 0002 wants it recorded as one. Avalonia.* also
+      # picks up Avalonia.AvaloniaEdit when 0003's spike adds it, which is correct: its
+      # 12.0.0 declares Avalonia >= 12.0.0, so it genuinely has to move with the family.
+      avalonia:
+        patterns:
+          - Avalonia
+          - Avalonia.*
+      avalonia-security:
+        applies-to: security-updates
+        patterns:
+          - Avalonia
+          - Avalonia.*
+
+      # Build and test only, so AGENTS.md's licence, trim and composition-scan checks do
+      # not apply and there is nothing to gain from reviewing them apart.
+      test-tooling:
+        patterns:
+          - Microsoft.NET.Test.Sdk
+          - xunit
+          - xunit.*
+      test-tooling-security:
+        applies-to: security-updates
+        patterns:
+          - Microsoft.NET.Test.Sdk
+          - xunit
+          - xunit.*
+
+  # Everything else shipped in the artifact — CommunityToolkit.Mvvm today — stays
+  # ungrouped on purpose: each one owes the reviewer its own CVE, licence and trim-safety
+  # pass, and a shared pull request invites one verdict to stand in for several.
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,3 +76,15 @@ updates:
       interval: weekly
     commit-message:
       prefix: chore
+    groups:
+      # Every step in ci.yml is an action, so ungrouped bumps queue behind each other for
+      # the same file and each merge rebases the rest. The pattern is deliberately every
+      # action rather than the official ones, so a third-party action added later joins
+      # the group instead of quietly reintroducing the queue.
+      actions:
+        patterns:
+          - "*"
+      actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
