@@ -56,7 +56,30 @@ scripts/verify-corpus.sh
 It fetches or copies each entry, checks the count, records SHA-256s, and fails if anything arrived
 line-ending normalised.
 
-Without the variable the build and the whole unit suite still pass — only the corpus round-trip and timing suites skip, loudly. Since those are the acceptance tests for the measured serialisation requirements, run them before proposing a change to the parser, model or serialiser.
+### Set it before running the tests, or the acceptance tests will not run
+
+Without the variable the build and the whole unit suite still pass — the corpus suites report **`Skipped`**, not passed, which is the one thing that makes their absence visible in the output:
+
+```
+Skipped XsdEditor.Core.Tests.Syntax.CorpusRoundTripTests.Every_corpus_file_round_trips_byte_for_byte
+Passed!  - Failed: 0, Passed: 262, Skipped: 2, Total: 264
+```
+
+**A green run with those two skipped has not tested round-trip fidelity at all.** They are the acceptance tests for the measured serialisation requirements, so export `XSDEDITOR_CORPUS` before you run `dotnet test` if you are touching the parser, model or serialiser — the skip is easy to read past in a wall of passing output.
+
+Run just those, once the variable is set:
+
+```bash
+dotnet test XsdEditor.slnx --filter "FullyQualifiedName~CorpusRoundTripTests"
+```
+
+Or point the headless harness straight at the files, which reports each one's size and any diagnostic:
+
+```bash
+dotnet run --project src/XsdEditor.Cli -- roundtrip corpus/*.xsd
+```
+
+CI needs no local setup for this: `XSDEDITOR_CORPUS` is a repository variable, and the `Reference corpus` job fetches the files and runs these suites against them on every pull request. It is deliberately the only job that does, so a fixture that has moved upstream cannot fail the build on three operating systems.
 
 ## Before adding a dependency
 

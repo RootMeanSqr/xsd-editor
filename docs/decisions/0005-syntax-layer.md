@@ -60,6 +60,8 @@ An earlier draft of this record recommended a plain concrete syntax tree — ful
 
 ### The offset-map interaction, stated because it is where fidelity will actually break
 
+> **Superseded by [`0007`](0007-no-ampersand-preprocessor.md).** The premise below — that `XE-070`'s preprocessor runs before our parse — was inherited from a requirement written when the reader was assumed to be `XmlReader`. This record is what removed that assumption: our lexer treats a raw `&` as ordinary text, so there is no parse failure to prevent. There is now no preprocessor at any stage: a raw ampersand is an error wherever it appears, the editor escapes what it writes, the tree is built over the original file bytes, and round trip is an identity with no offset map in it. The reasoning below still stands as an argument for widths, and would apply again if escaping ever moved back before the parse.
+
 `XE-070`'s ampersand preprocessor escapes raw `&` in annotation text **before** parsing. So spans are measured against a *patched* buffer, not the file on disk, and "serialise an unmodified node by copying its span" is only true with respect to that patched buffer.
 
 The preprocessor therefore emits the patched text **and an edit list**, and serialisation reverses exactly the escapes it introduced. Round-trip is defined as: original bytes → preprocess → parse → serialise → un-preprocess → original bytes. The test asserts against the file on disk, so an error in the offset mapping fails visibly rather than producing a plausible-looking file.

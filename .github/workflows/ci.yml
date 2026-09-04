@@ -133,15 +133,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
       # The corpus is a controlled interface standard and is never committed;
-      # XSDEDITOR_CORPUS holds the pinned URLs (0004). The suites that consume it arrive in
-      # Phase 1; what this proves now is that the fixture is reachable and unchanged, so a
-      # moved or edited upstream file fails here rather than deep inside a parser test.
-      # Skips loudly when the variable is unset.
+      # XSDEDITOR_CORPUS holds the pinned URLs (0004). This proves the fixture is reachable
+      # and unchanged, so a moved or edited upstream file fails here rather than deep
+      # inside a parser test. Skips loudly when the variable is unset.
       - name: Fetch and verify
         env:
           XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
         run: scripts/verify-corpus.sh corpus
+
+      # The suites that consume the corpus arrived with the syntax layer, and this is the
+      # only job that has fetched it — build-test deliberately does not, so that a network
+      # fetch cannot fail the build on three operating systems. Running them here is what
+      # makes XE-069 and XE-083 acceptance tests rather than tests that always skip.
+      # They report SKIPPED, not passed, when XSDEDITOR_CORPUS is unset.
+      - name: Corpus round trip
+        env:
+          XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
+        run: dotnet test XsdEditor.slnx --filter "FullyQualifiedName~CorpusRoundTripTests"
 
       - uses: actions/upload-artifact@v7
         if: always()

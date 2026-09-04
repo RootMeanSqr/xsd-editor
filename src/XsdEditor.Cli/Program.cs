@@ -17,7 +17,12 @@ if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
     return 0;
 }
 
-// The commands land with the parser in Phase 1; the harness exists from Phase 0 so that
-// CI wiring is in place before there is anything to measure.
+// `roundtrip` lands with the syntax layer. `format` and `time` follow with the formatter
+// and the validation path, later in Phase 1.
+if (args[0] == "roundtrip")
+{
+    return XsdEditor.Cli.RoundTripCommand.Run(args[1..]);
+}
+
 Console.Error.WriteLine($"xsdedit: '{args[0]}' is not implemented yet (Phase 1).");
 return 2;
