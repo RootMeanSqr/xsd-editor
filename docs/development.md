@@ -40,7 +40,9 @@ export XSDEDITOR_CORPUS='/path/to/entry.xsd;/path/to/first-dependency.xsd;/path/
 $env:XSDEDITOR_CORPUS = 'C:\schemas\entry.xsd;C:\schemas\first-dependency.xsd;C:\schemas\second-dependency.xsd'
 ```
 
-**The entry point is the smallest of the three files**: it is the only one nothing else references, so the closure rooted there reaches all of them. The files are named, with their checksums, in the measurements record linked below; the documents refer to them by role rather than by name, because the corpus is the fixture the measured requirements are checked against and not a schema set this editor is built for. CI reads the same variable, holding the pinned upstream URLs; which commit those point at, and what each file should check-sum to, is recorded in [`measurements/corpus-figures.md`](measurements/corpus-figures.md).
+**The entry point is the smallest of the three files**: it is the only one nothing else references, so the closure rooted there is the unique root, reaches all of them, and exercises both a cross-namespace `import` and a same-namespace `include`. The documents refer to the files by role rather than by name — the corpus is the fixture the measured requirements are checked against, not a schema set this editor is built for.
+
+CI reads the same variable, whose URLs carry the pin. Nothing about the files is transcribed into the repository: `verify-corpus.sh` prints each one's size, CRLF and bare-LF counts and SHA-256 as it fetches them, so what the run actually measured is in that run's log.
 
 **The corpus is wholly CRLF.** If you keep a local copy in a Git repository, make sure it is not line-ending normalised on checkout, or every round-trip test will fail against it for a reason that has nothing to do with your change.
 

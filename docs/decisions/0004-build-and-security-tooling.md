@@ -26,7 +26,9 @@ Where an entry is a URL it is fetched to a temporary directory first, and `schem
 
 **Fetched files are opaque bytes.** They are never decoded, re-encoded, or line-ending normalised in transit, because their exact bytes are what the round-trip suites assert against (`XE-067`, `XE-083`). The corpus is wholly CRLF, so a fetch path that helpfully normalised would turn every round-trip test into a false pass on one platform and a false failure on another. CI verifies each file against a recorded SHA-256, which catches exactly that.
 
-**The corpus is pinned to a commit, not tracked.** Its pin and per-file checksums are recorded in [`../measurements/corpus-figures.md`](../measurements/corpus-figures.md). Tracking the upstream default branch would mean an edit to the standard arriving as an unexplained parser-test failure; pinned, a round-trip diff is always our regression. Moving the pin is a reviewed commit that updates those checksums in the same change. The URLs live only in the repository variable, so there is one operative copy to update.
+**The corpus is pinned to a commit, not tracked.** The pin lives in the `XSDEDITOR_CORPUS` variable's URLs, which is the one operative copy. Tracking the upstream default branch would mean an edit to the standard arriving as an unexplained parser-test failure; pinned, a round-trip diff is always our regression.
+
+**Its identity is verified at run time rather than transcribed into the repository.** `scripts/verify-corpus.sh` prints each fetched file's size, CRLF and bare-LF counts and SHA-256 on every run, so a corpus that changed under us is visible in the log of the run that used it. A committed checksum table would say the same thing one edit later than the pin, and only if something compared against it — the load-bearing expectations are the measured figures in `requirements.md`, which tests assert directly.
 
 ### Licence checking stays manual; the CI step is an inventory and is named as one
 
