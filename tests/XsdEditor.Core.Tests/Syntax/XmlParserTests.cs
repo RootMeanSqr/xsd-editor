@@ -224,38 +224,6 @@ public class XmlParserTests
     }
 
     [Fact]
-    public void A_raw_ampersand_in_annotation_text_is_allowed()
-    {
-        // XE-070. Non-conforming schemas write "R&D" in documentation, and the editor has to
-        // open them. The corpus has no instance of this, which is exactly why it is a test.
-        var tree = SyntaxTree.Parse(
-            "<xs:annotation><xs:documentation>Tom & Jerry, R&D</xs:documentation></xs:annotation>");
-
-        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
-    }
-
-    [Theory]
-    [InlineData("annotation")]
-    [InlineData("documentation")]
-    [InlineData("appinfo")]
-    public void The_leniency_covers_each_annotation_element(string local)
-    {
-        var tree = SyntaxTree.Parse($"<xs:{local}>a & b</xs:{local}>");
-
-        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
-    }
-
-    [Fact]
-    public void The_leniency_reaches_elements_nested_below_documentation()
-    {
-        // xs:documentation takes arbitrary markup, so the tolerance has to be inherited by
-        // descendants rather than applying only to its immediate text.
-        var tree = SyntaxTree.Parse("<xs:documentation><b><i>a & b</i></b></xs:documentation>");
-
-        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
-    }
-
-    [Fact]
     public void A_raw_ampersand_in_ordinary_element_text_is_reported_on_the_ampersand_itself()
     {
         const string Source = "<xs:element>Tom & Jerry</xs:element>";
@@ -271,22 +239,35 @@ public class XmlParserTests
         Assert.Equal("&", diagnostic.Span.TextIn(Source).ToString());
     }
 
-    [Fact]
-    public void The_leniency_stops_when_the_annotation_element_closes()
+    [Theory]
+    [InlineData("annotation")]
+    [InlineData("documentation")]
+    [InlineData("appinfo")]
+    public void A_raw_ampersand_is_reported_in_annotation_text_too(string local)
     {
-        var tree = SyntaxTree.Parse(
-            "<a><xs:documentation>in & here</xs:documentation>out & here</a>");
+        // XE-070 once made an exception here, on the reasoning that non-conforming schemas
+        // write "R&D" in documentation. The editor still opens them (XE-031) and still
+        // saves them (XE-057) — it just no longer accepts them silently, because a reader
+        // lenient where the format is not produces files other tools reject.
+        var tree = SyntaxTree.Parse($"<xs:{local}>a & b</xs:{local}>");
 
         var diagnostic = Assert.Single(tree.Diagnostics);
         Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, diagnostic.Code);
-        Assert.Equal("out ", tree.Text[(diagnostic.Span.Start - 4)..diagnostic.Span.Start]);
     }
 
     [Fact]
-    public void An_attribute_value_stays_strict_even_inside_an_annotation()
+    public void A_raw_ampersand_is_reported_below_documentation_and_after_it_alike()
     {
-        // XE-070 scopes the rule to annotation and documentation *text*, and says in terms
-        // that it does not apply to attribute content.
+        var tree = SyntaxTree.Parse(
+            "<a><xs:documentation><b>in & here</b></xs:documentation>out & here</a>");
+
+        Assert.Equal(2, tree.Diagnostics.Count);
+        Assert.All(tree.Diagnostics, d => Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, d.Code));
+    }
+
+    [Fact]
+    public void A_raw_ampersand_in_an_attribute_is_reported_wherever_the_attribute_sits()
+    {
         var tree = SyntaxTree.Parse("<xs:documentation><b title=\"R&D\">text</b></xs:documentation>");
 
         var diagnostic = Assert.Single(tree.Diagnostics);
@@ -347,8 +328,7 @@ public class XmlParserTests
     public void A_reference_to_a_code_point_XML_forbids_is_reported(string reference)
     {
         // Well formed as syntax, rejected by every conforming reader — XmlReader raises
-        // "is an invalid character" on each of these. Nothing downstream can rescue it, so
-        // it is not covered by XE-070's leniency either.
+        // "is an invalid character" on each of these.
         var tree = SyntaxTree.Parse($"<a>{reference}</a>");
 
         var diagnostic = Assert.Single(tree.Diagnostics);
@@ -373,14 +353,13 @@ public class XmlParserTests
     }
 
     [Fact]
-    public void An_invalid_character_reference_is_reported_even_in_annotation_text()
+    public void A_raw_ampersand_and_an_invalid_reference_are_told_apart()
     {
-        // XE-070's leniency tolerates a raw '&', which an escaping pass could repair. This
-        // is a different failure and the tolerance does not extend to it.
         var tree = SyntaxTree.Parse("<xs:documentation>a & b &#0;</xs:documentation>");
 
-        var diagnostic = Assert.Single(tree.Diagnostics);
-        Assert.Equal(SyntaxDiagnosticCode.InvalidCharacterReference, diagnostic.Code);
+        Assert.Equal(
+            [SyntaxDiagnosticCode.RawAmpersand, SyntaxDiagnosticCode.InvalidCharacterReference],
+            tree.Diagnostics.Select(d => d.Code).ToArray());
     }
 
     [Fact]
