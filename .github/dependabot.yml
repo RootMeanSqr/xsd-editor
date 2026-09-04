@@ -2,6 +2,15 @@
 # dependency is inside the installed artifact with no runtime update path — so an update
 # has to reach us before a release, not after. Dependabot raises the pull request; the
 # CVE, licence and trim-safety checks in AGENTS.md still apply to it like any other.
+#
+# Grouping exists because a version is not always a property of one package. Avalonia
+# ships its family in lockstep, so a bump that moves some of it and leaves the rest is a
+# configuration nobody upstream tests. Ungrouped, Dependabot proved this: it opened one
+# pull request for Avalonia alone, superseded it with a second that carried
+# Avalonia.Themes.Fluent as well, and left Avalonia.Desktop a major version behind in
+# both. Central transitive pinning makes that restore and build anyway, so CI reports
+# success on a combination that would fail at startup. The groups below are what make the
+# unit of review the unit that actually has to move together.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -11,6 +20,24 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: chore
+    groups:
+      # The whole family, every update type. A major is grouped for the same reason a
+      # patch is — it is one decision, and 0002 wants it recorded as one.
+      avalonia:
+        patterns:
+          - Avalonia
+          - Avalonia.*
+      # Build and test only, so AGENTS.md's licence, trim and composition-scan checks do
+      # not apply and there is nothing to gain from reviewing them apart.
+      test-tooling:
+        patterns:
+          - Microsoft.NET.Test.Sdk
+          - xunit
+          - xunit.*
+
+  # Everything else shipped in the artifact — CommunityToolkit.Mvvm today — stays
+  # ungrouped on purpose: each one owes the reviewer its own CVE, licence and trim-safety
+  # pass, and a shared pull request invites one verdict to stand in for several.
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,3 +45,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: chore
+    groups:
+      # Every step in ci.yml is one of these, so ungrouped bumps queue behind each other
+      # for the same file and each merge rebases the rest.
+      actions:
+        patterns:
+          - "*"
