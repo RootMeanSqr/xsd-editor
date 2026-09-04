@@ -6,14 +6,16 @@ The route from a documentation-only repository to a shipping editor. Phases land
 
 One phase is in work at a time. Update this table in the pull request that changes a phase's state — it is the answer to "where are we", and a table that lags the work is worse than none.
 
+**Each name links to its section, and the anchor carries the status**, because the section heading does. So a state change edits three things in one commit: the table's state cell, the heading, and the link. A stale link scrolls nowhere rather than erroring, which is why it is written down here rather than left to be noticed.
+
 | Phase | State | |
 | --- | --- | --- |
-| **0** — Repository and CI scaffolding | **DONE** | |
-| **1** — Syntax tree, schema model, serialiser, commands, index | **IN WORK** | |
-| **2** — GUI scaffolding | TODO | |
-| **3** — Text View and the AvaloniaEdit spike | TODO | Blocked on `0003`'s spike, which it runs |
-| **4** — Design View | TODO | |
-| **5** — Whole-schema tools, packaging, release | TODO | |
+| [**0** — Repository and CI scaffolding](#phase-0--repository-and-ci-scaffolding--done) | **DONE** | |
+| [**1** — Syntax tree, schema model, serialiser, commands, index](#phase-1--syntax-tree-schema-model-serialiser-commands-index--in-work) | **IN WORK** | |
+| [**2** — GUI scaffolding](#phase-2--gui-scaffolding--todo) | TODO | |
+| [**3** — Text View and the AvaloniaEdit spike](#phase-3--text-view-and-the-avaloniaedit-spike--todo) | TODO | Blocked on `0003`'s spike, which it runs |
+| [**4** — Design View](#phase-4--design-view--todo) | TODO | |
+| [**5** — Whole-schema tools, packaging, release](#phase-5--whole-schema-tools-packaging-release--todo) | TODO | |
 
 | State | Means |
 | --- | --- |
@@ -21,6 +23,8 @@ One phase is in work at a time. Update this table in the pull request that chang
 | **IN WORK** | Started and not yet code complete |
 | **REVIEW** | Code complete and awaiting judgement against the phase's *Exit* line — a measurement not yet taken, a spike not run, a design not written, or a pull request not yet merged |
 | **DONE** | The *Exit* line is satisfied |
+
+The sub-phases below carry the same states in their own headings, so that a phase reading IN WORK says which part of it is. They are not tracked in the table above — one row per phase is what makes it scannable.
 
 **REVIEW and DONE are separate because writing the code is not the same as meeting the bar.** Every phase's *Exit* line names things that are not code — timings recorded, a formatter exercised by hand, a spike measured, a design written — and a phase that collapsed the two would count itself finished with those outstanding. REVIEW is the honest state for "there is nothing left to write, and it is not finished", and it covers the ordinary case where the work is sitting in an open pull request.
 
@@ -62,7 +66,7 @@ Solution layout, build configuration, CI, and the documents above. What follows 
 
 The largest and most load-bearing phase. Nothing here needs a UI.
 
-### 1a. Lossless syntax layer
+### 1a. Lossless syntax layer — REVIEW
 
 `XE-067`–`XE-069` demand comments, whitespace, and **original character-reference spelling** survive a write, and `XE-031` demands a partial parse of a malformed buffer. A DOM cannot do this; a **Roslyn-style green/red tree over the raw text** can. Every node owns an exact source span including trivia, so serialising an untouched node is a byte copy of its span, and only modified nodes are re-rendered. Lossless preservation stops being a feature to implement and becomes the default behaviour.
 
@@ -72,9 +76,9 @@ The largest and most load-bearing phase. Nothing here needs a UI.
 
 Two invariants from `0005` are **property tests written with the first nodes, not comments**: widths are in **UTF-16 code units** (matching `SourceSpan`'s `int` indexing into `ReadOnlySpan<char>`), and **a node's width equals the sum of its children's widths** — the statement that no character is claimed twice or dropped, and the thing that makes "lossless" falsifiable.
 
-**Ampersand preprocessor** (`XE-070`) escapes raw `&` in annotation text before parsing, which shifts every downstream offset. It therefore emits a **patched buffer plus an offset map**, and the serialiser reverses exactly the escapes it introduced. An `&` already opening a valid reference is untouched — the corpus would fail immediately across 116 references otherwise.
+**Ampersand handling** (`XE-070`) is now split, by [`0007`](decisions/0007-ampersand-escaping-at-validation.md). The escaping itself moved out of the parse path entirely: our lexer reads a raw `&` as ordinary text and has no failure to prevent, so the patched buffer and its offset map belong to `1f`, where `XmlSchemaSet` does reject one. What stays here is the *diagnostic* — a raw `&` is tolerated inside `xs:annotation`, `xs:documentation` and `xs:appinfo` and reported everywhere else, attribute values included, which is what lets the editor open a non-conforming file and say what is wrong with it. An `&` already opening a valid reference is untouched throughout; the corpus would fail immediately across its 119 references otherwise. **The tree is therefore built over the original file bytes and round trip is an identity**, with no offset map in the fidelity path.
 
-### 1b. Schema model
+### 1b. Schema model — TODO
 
 A semantic layer projected over the syntax tree, each node holding a pointer to its syntax node: `SchemaClosure` → `SchemaDocument` → `GlobalElement` / `ComplexType` / `SimpleType` → `ModelGroup` / `ElementParticle` / `Facet` / `Annotation` / `UnsupportedConstruct` / `GapNode`.
 
@@ -82,7 +86,7 @@ A semantic layer projected over the syntax tree, each node holding a pointer to 
 - **Effective vs. written attributes** are distinct properties throughout (`XE-072`, `XE-082`, `XE-049`): the Details Pane needs "is this the default", the renderer needs the effective value, the serialiser needs to omit defaults.
 - Constructs outside R1 scope become `UnsupportedConstruct` nodes carrying their name and their verbatim span (`XE-012`, `XE-027`).
 
-### 1c. The index — dependency lookup without scanning
+### 1c. The index — dependency lookup without scanning — TODO
 
 One `SchemaIndex` per resolved closure.
 
@@ -100,7 +104,7 @@ Two consequences worth stating. First, "unresolved" is not a separate structure 
 
 Forward edges (a type's own dependencies) come from the model rather than the index; the subset closure (`XE-021`) and the unused-types reachability walk (`XE-022`) are whole-closure O(V+E) passes and stay that way.
 
-### 1d. Commands, undo, and index maintenance — the design risk
+### 1d. Commands, undo, and index maintenance — the design risk — TODO
 
 **First task: measure a full index rebuild on the corpus.** A rebuild over the closure's ~5,600 types may well be a few milliseconds — comfortably inside a frame — in which case rebuild-on-dirty is correct and incremental maintenance is complexity bought for nothing. This plan insists elsewhere on measuring before gating (`0004` on trim warnings, `0003` on the editor control); it should hold itself to the same rule rather than assuming the clever design.
 
@@ -114,7 +118,7 @@ What belongs here is everything that does not name a control: one ordered comman
 
 **A creating command produces its text through the formatter** (`XE-087`, §1e). This is the answer to "how does a Design View action become source text", and it is settled here rather than in Phase 4 because the alternative — each command inventing its own indentation from whatever text happens to surround the insertion point — produces different results for the same action depending on the file. The command supplies the subtree and its depth; the formatter supplies every character of whitespace. So the formatter is a Core dependency of the command layer, not a UI concern.
 
-### 1e. Serialiser and formatter
+### 1e. Serialiser and formatter — TODO
 
 **Serialiser**: byte-copy of unmodified spans; re-render only where the model changed. Two deliberate deviations, both specified: strict attribute ordering (`XE-071`) applied to **every** element written, and implicit defaults omitted (`XE-072`).
 
@@ -128,7 +132,7 @@ Its hard rule is the one the requirements state: it rewrites whitespace *between
 - **Single-line insertion** — the `XE-087` acceptance test. Load a schema held entirely on one line, insert an element, assert the new subtree is correctly indented and line-broken and that **every other byte is unchanged**.
 - **Line ending policy** (`XE-086`) — keep-source and system, with the round-trip suite pinned to keep-source so it cannot pass on one CI runner and fail on another.
 
-### 1f. Validation, and the orchestration around it
+### 1f. Validation, and the orchestration around it — TODO
 
 `XmlSchemaSet` over the resolved closure (`XE-052`–`XE-054`), with `XmlSchemaException` positions mapped back to `ObjectId` and syntax span. Cascade suppression (`XE-065`) and the separate continuous name-lookup check (`XE-056`) are implemented here; both are pure model operations. Directive resolution (`XE-016`, `XE-018`) and degradation on an unresolvable one (`XE-019`) come with it.
 
@@ -136,7 +140,7 @@ Its hard rule is the one the requirements state: it rewrites whitespace *between
 
 These are architectural rather than cosmetic — cancellation has to run through the whole validation path, and `XE-061`'s "stale results must never overwrite newer ones" is a property of the result-publishing API. Retrofitting either onto a synchronous validator in Phase 5 would mean rewriting it, so the API is shaped for them now even though nothing displays the results until Phase 2.
 
-### 1g. The CLI surface
+### 1g. The CLI surface — IN WORK
 
 `XsdEditor.Cli` was scaffolded in Phase 0 as the harness CI measures through. This phase gives it verbs:
 
