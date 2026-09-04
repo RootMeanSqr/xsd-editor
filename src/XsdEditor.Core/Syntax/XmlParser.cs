@@ -23,6 +23,7 @@ internal sealed class XmlParser
     private readonly XmlLexer _lexer;
     private readonly List<SyntaxDiagnostic> _diagnostics = [];
     private readonly List<string> _openElements = [];
+    private int _annotationDepth;
 
     /// <summary>Creates a parser over a source buffer.</summary>
     /// <param name="text">The buffer to parse.</param>
@@ -54,6 +55,7 @@ internal sealed class XmlParser
                 var start = _lexer.Position;
                 var text = _lexer.LexText();
                 children.Add(text);
+                ReportRawAmpersands(text.Text, start, lenient: _annotationDepth > 0);
 
                 // Only whitespace may sit outside the root element. Non-whitespace there is
                 // a well-formedness error, and XE-031 wants it marked rather than quietly
@@ -158,6 +160,12 @@ internal sealed class XmlParser
 
         var elementChildren = new List<GreenNode> { startTag };
         _openElements.Add(name.Text);
+        var carriesAnnotationText = IsAnnotationText(name.Text);
+        if (carriesAnnotationText)
+        {
+            _annotationDepth++;
+        }
+
         try
         {
             ParseContent(elementChildren);
@@ -166,6 +174,10 @@ internal sealed class XmlParser
         finally
         {
             _openElements.RemoveAt(_openElements.Count - 1);
+            if (carriesAnnotationText)
+            {
+                _annotationDepth--;
+            }
         }
 
         return new GreenSyntax(SyntaxKind.Element, [.. elementChildren]);
@@ -275,6 +287,11 @@ internal sealed class XmlParser
                 var value = _lexer.LexAttributeValue();
                 children.Add(value);
 
+                // XE-070's leniency is scoped to annotation and documentation text and
+                // explicitly does not reach attribute content, so this stays strict even
+                // inside an annotation subtree.
+                ReportRawAmpersands(value.Text, _lexer.Position - value.Text.Length, lenient: false);
+
                 if (value.Text.Length < 2 || value.Text[^1] != quote)
                 {
                     Report(
@@ -337,6 +354,57 @@ internal sealed class XmlParser
         var token = _lexer.LexGapInTag();
         Report(code, SourceSpan.FromBounds(start, _lexer.Position), message);
         return token;
+    }
+
+    /// <summary>
+    /// Reports every raw ampersand in a run of text, unless this is somewhere
+    /// <c>XE-070</c> tolerates them.
+    /// </summary>
+    /// <remarks>
+    /// A raw <c>&amp;</c> is a well-formedness error: <see cref="System.Xml.XmlReader"/>
+    /// rejects it, so a document containing one cannot be validated even though our own
+    /// lexer reads it happily. Reporting it is what lets the editor say so, and reporting
+    /// it <em>per occurrence</em> rather than per token is what lets the caret be put on it.
+    /// </remarks>
+    private void ReportRawAmpersands(string text, int start, bool lenient)
+    {
+        if (lenient)
+        {
+            return;
+        }
+
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] != '&' || CharacterReference.StartsAt(text, index))
+            {
+                continue;
+            }
+
+            Report(
+                SyntaxDiagnosticCode.RawAmpersand,
+                new SourceSpan(start + index, 1),
+                "A raw '&' that opens no character or entity reference. Escape it as '&amp;'.");
+        }
+    }
+
+    /// <summary>
+    /// Whether an element's text content is annotation text, where <c>XE-070</c> tolerates
+    /// a raw ampersand.
+    /// </summary>
+    /// <remarks>
+    /// Matched on local name rather than on a resolved namespace, because namespace
+    /// resolution belongs to the schema model and this layer sees only prefixes. That makes
+    /// the test slightly generous — a foreign element that happens to be called
+    /// <c>documentation</c> gets the same leniency — which is the right way round: the cost
+    /// is a raw ampersand going unreported, not a valid document being called malformed.
+    /// The schema model can tighten it once it knows the namespaces.
+    /// </remarks>
+    private static bool IsAnnotationText(string qualifiedName)
+    {
+        var colon = qualifiedName.LastIndexOf(':');
+        var local = colon < 0 ? qualifiedName : qualifiedName[(colon + 1)..];
+
+        return local is "annotation" or "documentation" or "appinfo";
     }
 
     private void Report(SyntaxDiagnosticCode code, SourceSpan span, string message) =>

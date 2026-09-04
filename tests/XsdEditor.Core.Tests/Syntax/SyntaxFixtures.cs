@@ -44,6 +44,19 @@ public static class SyntaxFixtures
                 "<xs:annotation>\n  <xs:documentation>Text with a &amp; and a &#38; in it."
                 + "</xs:documentation>\n</xs:annotation>",
 
+            // XE-070: a raw & is tolerated in annotation text and nowhere else. These are
+            // well-formed as far as this editor is concerned, which is the whole point of
+            // the leniency — the corpus has no instance of it, but real schemas do.
+            ["a raw ampersand in documentation text"] =
+                "<xs:annotation>\n  <xs:documentation>Tom & Jerry, R&D, AT&T</xs:documentation>\n"
+                + "</xs:annotation>",
+
+            ["a raw ampersand below documentation, and one beside a real reference"] =
+                "<xs:documentation><b>a & b</b> and &amp; and &notdeclared; too</xs:documentation>",
+
+            ["a raw ampersand in appinfo"] =
+                "<xs:annotation><xs:appinfo>k=1 & v=2</xs:appinfo></xs:annotation>",
+
             ["a CDATA section"] =
                 "<xs:documentation><![CDATA[ raw <not markup> & ampersand ]]></xs:documentation>",
 
@@ -93,6 +106,17 @@ public static class SyntaxFixtures
             ["an attribute with no equals sign"] = "<a name \"value\"></a>",
             ["a tag with no closing angle bracket"] = "<a name=\"v\"\n<b/>",
             ["a bare less-than in content"] = "<a>1 < 2</a>",
+
+            // The other side of XE-070's rule. Outside annotation text a raw & is a
+            // well-formedness error — XmlReader rejects it, so the document cannot be
+            // validated — and the editor has to be able to say so.
+            ["a raw ampersand in ordinary element text"] = "<xs:element>Tom & Jerry</xs:element>",
+            ["a raw ampersand in an attribute value"] = "<a name=\"Tom & Jerry\"/>",
+            ["a raw ampersand in an attribute inside documentation"] =
+                "<xs:documentation><b title=\"R&D\">text</b></xs:documentation>",
+            ["an entity that is not predefined, outside annotation text"] =
+                "<a>&notdeclared;</a>",
+            ["an unterminated numeric reference"] = "<a>&#x20 missing the semicolon</a>",
             ["a stray ampersand and junk before the root"] = "junk & more\n<a/>",
             ["nothing but junk"] = "not xml at all",
             ["a lone opening angle bracket"] = "<",

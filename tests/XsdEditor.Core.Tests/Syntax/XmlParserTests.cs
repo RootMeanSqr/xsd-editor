@@ -223,6 +223,125 @@ public class XmlParserTests
         Assert.Throws<ArgumentNullException>(() => SyntaxTree.Parse(null!));
     }
 
+    [Fact]
+    public void A_raw_ampersand_in_annotation_text_is_allowed()
+    {
+        // XE-070. Non-conforming schemas write "R&D" in documentation, and the editor has to
+        // open them. The corpus has no instance of this, which is exactly why it is a test.
+        var tree = SyntaxTree.Parse(
+            "<xs:annotation><xs:documentation>Tom & Jerry, R&D</xs:documentation></xs:annotation>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Theory]
+    [InlineData("annotation")]
+    [InlineData("documentation")]
+    [InlineData("appinfo")]
+    public void The_leniency_covers_each_annotation_element(string local)
+    {
+        var tree = SyntaxTree.Parse($"<xs:{local}>a & b</xs:{local}>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Fact]
+    public void The_leniency_reaches_elements_nested_below_documentation()
+    {
+        // xs:documentation takes arbitrary markup, so the tolerance has to be inherited by
+        // descendants rather than applying only to its immediate text.
+        var tree = SyntaxTree.Parse("<xs:documentation><b><i>a & b</i></b></xs:documentation>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Fact]
+    public void A_raw_ampersand_in_ordinary_element_text_is_reported_on_the_ampersand_itself()
+    {
+        const string Source = "<xs:element>Tom & Jerry</xs:element>";
+        var tree = SyntaxTree.Parse(Source);
+
+        var diagnostic = Assert.Single(tree.Diagnostics);
+        Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, diagnostic.Code);
+
+        // Derived rather than hand-counted, so the test does not encode its author's
+        // arithmetic. The span must cover the '&' alone, so a caret can be put on it.
+        Assert.Equal(Source.IndexOf('&', StringComparison.Ordinal), diagnostic.Span.Start);
+        Assert.Equal(1, diagnostic.Span.Length);
+        Assert.Equal("&", diagnostic.Span.TextIn(Source).ToString());
+    }
+
+    [Fact]
+    public void The_leniency_stops_when_the_annotation_element_closes()
+    {
+        var tree = SyntaxTree.Parse(
+            "<a><xs:documentation>in & here</xs:documentation>out & here</a>");
+
+        var diagnostic = Assert.Single(tree.Diagnostics);
+        Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, diagnostic.Code);
+        Assert.Equal("out ", tree.Text[(diagnostic.Span.Start - 4)..diagnostic.Span.Start]);
+    }
+
+    [Fact]
+    public void An_attribute_value_stays_strict_even_inside_an_annotation()
+    {
+        // XE-070 scopes the rule to annotation and documentation *text*, and says in terms
+        // that it does not apply to attribute content.
+        var tree = SyntaxTree.Parse("<xs:documentation><b title=\"R&D\">text</b></xs:documentation>");
+
+        var diagnostic = Assert.Single(tree.Diagnostics);
+        Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, diagnostic.Code);
+    }
+
+    [Fact]
+    public void Every_raw_ampersand_in_a_run_is_reported_separately()
+    {
+        var tree = SyntaxTree.Parse("<a>R&D and AT&T and B&Q</a>");
+
+        Assert.Equal(3, tree.Diagnostics.Count);
+        Assert.All(tree.Diagnostics, d => Assert.Equal(SyntaxDiagnosticCode.RawAmpersand, d.Code));
+    }
+
+    [Theory]
+    [InlineData("&amp;")]
+    [InlineData("&lt;")]
+    [InlineData("&gt;")]
+    [InlineData("&quot;")]
+    [InlineData("&apos;")]
+    [InlineData("&#38;")]
+    [InlineData("&#x20;")]
+    [InlineData("&#X7E;")]
+    public void A_valid_reference_is_never_reported_as_a_raw_ampersand(string reference)
+    {
+        var tree = SyntaxTree.Parse($"<a>{reference}</a>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Theory]
+    [InlineData("&notdeclared;")]
+    [InlineData("&#x20")]
+    [InlineData("&#;")]
+    [InlineData("&;")]
+    [InlineData("&")]
+    public void Something_that_only_looks_like_a_reference_is_reported(string text)
+    {
+        // 0005 puts DTDs outside scope, so there is no entity declaration to consult: an
+        // ampersand that does not open a numeric or predefined reference is a raw one.
+        var tree = SyntaxTree.Parse($"<a>{text}</a>");
+
+        Assert.Contains(tree.Diagnostics, d => d.Code == SyntaxDiagnosticCode.RawAmpersand);
+    }
+
+    [Fact]
+    public void An_ampersand_inside_a_cdata_section_is_not_a_reference_and_not_an_error()
+    {
+        // Inside CDATA nothing is markup, so there is nothing to escape and nothing to report.
+        var tree = SyntaxTree.Parse("<a><![CDATA[Tom & Jerry]]></a>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
     private static SyntaxNode FirstElement(SyntaxTree tree) =>
         tree.Root.DescendantNodes().First(node => node.Kind == SyntaxKind.Element);
 

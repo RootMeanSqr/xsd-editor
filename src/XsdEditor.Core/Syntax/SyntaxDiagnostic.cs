@@ -46,4 +46,10 @@ public enum SyntaxDiagnosticCode
 
     /// <summary>An attribute value is missing its closing quote.</summary>
     UnterminatedAttributeValue,
+
+    /// <summary>
+    /// A raw <c>&amp;</c> that opens no character or entity reference, somewhere
+    /// <c>XE-070</c>'s leniency does not reach.
+    /// </summary>
+    RawAmpersand,
 }
