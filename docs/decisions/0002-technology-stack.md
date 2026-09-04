@@ -74,7 +74,9 @@ because line style now carries meaning that a platform-specific renderer could d
 
 ### The schema model is ours; the BCL validates but does not represent
 
-The application builds and holds **its own editable schema model, constructed from `XmlReader`**.
+The application builds and holds **its own editable schema model, constructed by our own lexer**
+([`0005`](0005-syntax-layer.md), which amended this clause — it originally read "constructed from
+`XmlReader`", and `XmlReader` cannot preserve what the requirements below demand).
 `System.Xml.Schema.XmlSchemaSet` is used **only to validate and to resolve references**, never as
 the model the editor mutates.
 

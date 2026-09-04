@@ -74,7 +74,7 @@ Choices that are expensive to reverse — the stack, the parser, the persistence
 
 Five are recorded so far: **Apache-2.0** in [`docs/decisions/0001-licensing.md`](docs/decisions/0001-licensing.md), **.NET with Avalonia** in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md), and **AvaloniaEdit for Text View** in [`docs/decisions/0003-text-view-editor-control.md`](docs/decisions/0003-text-view-editor-control.md), **build, corpus access and security tooling** in [`docs/decisions/0004-build-and-security-tooling.md`](docs/decisions/0004-build-and-security-tooling.md), and **the syntax layer** in [`docs/decisions/0005-syntax-layer.md`](docs/decisions/0005-syntax-layer.md).
 
-Two are still `proposed` and both block work. `0003` is conditional on a measured spike, so do not begin Text View implementation without running it. `0005` amends a clause in `0002` and settles how source text is read, so Phase 1 does not start until it is accepted or rejected.
+One is still `proposed` and blocks work: `0003` is conditional on a measured spike, so do not begin Text View implementation without running it. `0005` is accepted — it amends `0002`'s clause on how source text is read, and settles the syntax layer as our own lexer over a full green/red tree, so Phase 1 is unblocked.
 
 ## Working style
 

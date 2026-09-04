@@ -6,7 +6,7 @@ The route from a documentation-only repository to a shipping editor. Phases land
 
 ## Context
 
-The repository was documentation only: a complete specification (`docs/requirements.md`, 82 `XE-nnn` requirements) and the decisions taken while reviewing it. `0002` settled the stack — .NET 10 and Avalonia — and recorded that scaffolding was unblocked, since everything encoded in a project file was decided.
+The repository was documentation only: a complete specification (`docs/requirements.md`, 87 `XE-nnn` requirements) and the decisions taken while reviewing it. `0002` settled the stack — .NET 10 and Avalonia — and recorded that scaffolding was unblocked, since everything encoded in a project file was decided.
 
 This plan sequences the work from there to a shipping editor, front-loading the two areas where the requirements are most likely to be wrong: lossless round-tripping (§4) and the dependency and navigation model (§2.2, §2.4).
 
@@ -46,9 +46,11 @@ The largest and most load-bearing phase. Nothing here needs a UI.
 
 `XE-067`–`XE-069` demand comments, whitespace, and **original character-reference spelling** survive a write, and `XE-031` demands a partial parse of a malformed buffer. A DOM cannot do this; a **Roslyn-style green/red tree over the raw text** can. Every node owns an exact source span including trivia, so serialising an untouched node is a byte copy of its span, and only modified nodes are re-rendered. Lossless preservation stops being a feature to implement and becomes the default behaviour.
 
-**How the source is read is settled by [`0005`](decisions/0005-syntax-layer.md), not by a spike.** `0002` says the model is "constructed from `XmlReader`", and `XmlReader` cannot serve these requirements: it resolves character references before the value is visible, normalises attribute values, reports a start position with no extent, and throws rather than recovering. That is documented behaviour rather than something to measure, so it is recorded as a decision — read with a purpose-built lexer, amending `0002` — and `0005` is **proposed**, since it changes a clause in an accepted record. Phase 1 does not start until it is accepted or rejected.
+**How the source is read is settled by [`0005`](decisions/0005-syntax-layer.md), not by a spike.** `0002` said the model is "constructed from `XmlReader`", and `XmlReader` cannot serve these requirements: it resolves character references before the value is visible, normalises attribute values, reports a start position with no extent, and throws rather than recovering. That is documented behaviour rather than something to measure, so it was recorded as a decision — read with a purpose-built lexer — and `0005` is now **accepted**, amending that clause in `0002`.
 
-`0005` also settles a plain concrete syntax tree rather than Roslyn's green/red split: round-trip fidelity needs only full-fidelity nodes with spans and trivia, and the split buys incremental reparse we have not yet measured a need for.
+`0005` also settles the tree shape: **a full green/red split**, adopted up front rather than deferred. Immutable width-carrying green nodes with no absolute position, and throwaway red façades computing position on descent. An edit then costs O(depth) rather than O(file), which is what `XE-030`'s two-way synchronisation and `XE-087`'s insertion into a large buffer both need, and structural sharing is what makes `XE-043`'s undo stack hold versions rather than copies.
+
+Two invariants from `0005` are **property tests written with the first nodes, not comments**: widths are in **UTF-16 code units** (matching `SourceSpan`'s `int` indexing into `ReadOnlySpan<char>`), and **a node's width equals the sum of its children's widths** — the statement that no character is claimed twice or dropped, and the thing that makes "lossless" falsifiable.
 
 **Ampersand preprocessor** (`XE-070`) escapes raw `&` in annotation text before parsing, which shifts every downstream offset. It therefore emits a **patched buffer plus an offset map**, and the serialiser reverses exactly the escapes it introduced. An `&` already opening a valid reference is untouched — the corpus would fail immediately across 116 references otherwise.
 
@@ -92,9 +94,21 @@ Either way the command layer belongs in this phase: it is what `XE-043`'s undo g
 
 What belongs here is everything that does not name a control: one ordered command stack owned by the model, `ICommand` with apply, invert, affected `ObjectId` and view, and a merge rule, and `XE-043`'s word-boundary grouping for text edits. Subordinating the editor control's own stack to it remains G7, measured and recorded with G1–G6 in `docs/measurements/spike-avaloniaedit.md`, which is what closes `0003`.
 
-### 1e. Serialiser
+**A creating command produces its text through the formatter** (`XE-087`, §1e). This is the answer to "how does a Design View action become source text", and it is settled here rather than in Phase 4 because the alternative — each command inventing its own indentation from whatever text happens to surround the insertion point — produces different results for the same action depending on the file. The command supplies the subtree and its depth; the formatter supplies every character of whitespace. So the formatter is a Core dependency of the command layer, not a UI concern.
 
-Byte-copy of unmodified spans; re-render only where the model changed. Two deliberate deviations, both specified: strict attribute ordering (`XE-071`) applied to **every** element written, and implicit defaults omitted (`XE-072`).
+### 1e. Serialiser and formatter
+
+**Serialiser**: byte-copy of unmodified spans; re-render only where the model changed. Two deliberate deviations, both specified: strict attribute ordering (`XE-071`) applied to **every** element written, and implicit defaults omitted (`XE-072`).
+
+**Formatter** (`XE-084`–`XE-087`): one component with two entry points — whole document, for Format Document, and single subtree, for an insertion from Design View. It shares the serialiser's whitespace model, which is why it is built here and not with the menu item that invokes it.
+
+Its hard rule is the one the requirements state: it rewrites whitespace *between* elements and **never enters an element carrying non-whitespace character data**, whose text and closing-tag placement are the value's own. Tested as:
+
+- **Idempotence** — format twice, get the same bytes. This is what a stray blank-line or trailing-whitespace rule would break, and why `XE-085` has no blank-line preference.
+- **Model preservation** — parse → format → parse yields the same schema model.
+- **Corpus default output** — the `XE-085` defaults over the three corpus files produce zero diff. The corpus is the formatter's default-output fixture and gives no coverage of any other setting, so the rest are built (§6): space-indented, `<tag />`, and the two documentation values, one ending in trailing whitespace and one not.
+- **Single-line insertion** — the `XE-087` acceptance test. Load a schema held entirely on one line, insert an element, assert the new subtree is correctly indented and line-broken and that **every other byte is unchanged**.
+- **Line ending policy** (`XE-086`) — keep-source and system, with the round-trip suite pinned to keep-source so it cannot pass on one CI runner and fail on another.
 
 ### 1f. Validation, and the orchestration around it
 
@@ -113,15 +127,16 @@ These are architectural rather than cosmetic — cancellation has to run through
 - Purpose-built fixtures for the four §6 verification gaps: anonymous complexTypes, raw ampersands, unresolvable directives, and a from-nothing authoring path.
 - Malformed-buffer fixtures producing gap nodes with the rest of the tree intact (`XE-031`).
 - Property-based command/index equivalence, as above.
+- **Formatter fixtures**, per §6: idempotence, `parse -> format -> parse` model preservation, zero diff over the corpus at the `XE-085` defaults, the single-line-file insertion test that is `XE-087`'s acceptance criterion, and the two documentation values that pin `XE-084`'s character-data exclusion.
 - **Timings**, through `XsdEditor.Cli`, with a `tests/XsdEditor.Benchmarks` project added in this phase — it was deliberately not scaffolded in Phase 0, where it would have measured nothing and pulled in a dependency early. Cold parse of 8.3 MB, serialise, index build, a full validation pass, and index update after a rename. Recorded in `docs/measurements/phase-1-timings.md`, and re-run in a corpus CI job — also added in this phase, alongside the first suite there is to skip — so `XE-076` regressions surface early.
 
-*Exit:* round-trip proven on the corpus with exactly the two predicted diffs; timings recorded; G7 design written; `0002` amended if S1 forced a hand-rolled lexer.
+*Exit:* round-trip proven on the corpus with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.
 
 ---
 
 ## Phase 2 — GUI scaffolding
 
-Mock-ups via the `design` skill first, then the shell: menu bar (`XE-044`), Top Ribbon (`XE-045`), tabs (`XE-014`, `XE-023`), and the four panels. Light/Dark theming (`XE-079`) and preference persistence (`XE-046`) land here because retrofitting theming across custom-drawn surfaces is expensive.
+Mock-ups via the `design` skill first, then the shell: menu bar (`XE-044`), Top Ribbon (`XE-045`), tabs (`XE-014`, `XE-023`), and the four panels. Light/Dark theming (`XE-079`) and preference persistence (`XE-046`) land here because retrofitting theming across custom-drawn surfaces is expensive. Preference persistence includes the formatting settings and the line ending policy (`XE-085`, `XE-086`), whose *behaviour* was built in Phase 1 and which need only a surface here.
 
 The three read-only panels wire straight onto the Phase 1 index and are what prove it: object tree (`XE-048`, virtualised at ~6,250 entries), Details Pane (`XE-049`), **Dependencies Tree** (`XE-050`, lazily expanded), Bottom Pane (`XE-051`), and the one shared `Navigate(ObjectId)` service behind all three (`XE-047`).
 
@@ -155,7 +170,7 @@ The bespoke canvas, and the single largest lump of UI work. Split in two:
 
 ## Phase 5 — Whole-schema tools, packaging, release
 
-Create Schema Subset (`XE-021`), Unused Types Report (`XE-022`), external change detection (`XE-024`), Open Recent and session re-open (`XE-044`, `XE-046`), per-platform installers, SBOM and `THIRD-PARTY-NOTICES`, and a **verified `XE-075` audit** of the shipped build — `0002` says egress compliance is to be proven against the artifact rather than assumed.
+Create Schema Subset (`XE-021`), Unused Types Report (`XE-022`), the **Format Document** menu entry (`XE-084`, invoking the Phase 1 formatter), external change detection (`XE-024`), Open Recent and session re-open (`XE-044`, `XE-046`), per-platform installers, SBOM and `THIRD-PARTY-NOTICES`, and a **verified `XE-075` audit** of the shipped build — `0002` says egress compliance is to be proven against the artifact rather than assumed.
 
 ---
 
@@ -182,15 +197,16 @@ So that a requirement falling through the gaps between phases is visible rather 
 | Phase | Requirements |
 | --- | --- |
 | 0 | `XE-081` (tooling half) |
-| 1 | `XE-016`–`XE-019`, `XE-021`, `XE-022`, `XE-030`, `XE-031`, `XE-038`–`XE-040`, `XE-042`, `XE-043`, `XE-052`–`XE-062`, `XE-065`, `XE-066`, `XE-067`–`XE-072`, `XE-083` |
+| 1 | `XE-016`–`XE-019`, `XE-021`, `XE-022`, `XE-030`, `XE-031`, `XE-038`–`XE-040`, `XE-042`, `XE-043`, `XE-052`–`XE-062`, `XE-065`, `XE-066`, `XE-067`–`XE-072`, `XE-083`, `XE-085`–`XE-087` |
 | 2 | `XE-013`, `XE-014`, `XE-015`, `XE-020`, `XE-023`, `XE-024`, `XE-044`–`XE-051`, `XE-064`, `XE-077`, `XE-079`, `XE-080` |
 | 3 | `XE-025`, `XE-026`, `XE-028`, `XE-029`, `XE-063` |
 | 4 | `XE-027`, `XE-033`–`XE-037`, `XE-041`, `XE-078`, `XE-082` |
-| 5 | `XE-073`–`XE-076` |
+| 5 | `XE-073`–`XE-076`, `XE-084` |
 
-Four are deliberately spread rather than owned by one phase, and are called out so they are not assumed done:
+Five are deliberately spread rather than owned by one phase, and are called out so they are not assumed done:
 
 - **`XE-032` Responsiveness** and **`XE-076` Performance** are properties every phase is measured against, not features. Each phase that adds a surface adds its timing to `measurements/`.
 - **`XE-077` Virtualisation** covers three separate lists — the object tree (Phase 2), the Text View line list (Phase 3), and the enumeration editor (Phase 2) — so it is satisfied in pieces rather than at once.
 - **`XE-080` Accessibility** is prototyped in Phase 2 on `0002`'s advice, but satisfying it is Phase 4's problem too: a custom-drawn canvas is a surface whose accessibility we own outright.
+- **`XE-084` Format Document** is split: the formatter itself is Phase 1 (§1e), because `XE-087`'s insertion path depends on it; only the Tools menu entry waits for Phase 5.
 - **`XE-007`** (canvas image export) is R2 and appears in no phase by design.
