@@ -2,7 +2,7 @@
 
 Everything here is developer-side tooling, which `XE-074` leaves unconstrained. The constraint it does impose — that an *end user* fetches no runtime, SDK or package manager — is satisfied by the publish settings in `src/XsdEditor.App/XsdEditor.App.csproj` and verified by CI.
 
-This file owns **installation, environment, and how to build**. The corpus rationale is in [`decisions/0004`](decisions/0004-build-and-security-tooling.md) and the pull-request checklist in [`../CONTRIBUTING.md`](../CONTRIBUTING.md); neither is repeated here. [`../AGENTS.md`](../AGENTS.md) carries the same command list as a working reference — it is the one thing deliberately in both places, since an agent reads that file and not this one.
+This file owns **installation and environment**. The command list lives in [`../AGENTS.md`](../AGENTS.md), the corpus rationale in [`decisions/0004`](decisions/0004-build-and-security-tooling.md), and the pull-request checklist in [`../CONTRIBUTING.md`](../CONTRIBUTING.md); none of them is repeated here.
 
 ## Prerequisites
 
@@ -22,15 +22,7 @@ Nothing else is needed: no database, no service, no container.
 
 ## Debug build
 
-The ordinary loop, and what CI runs on all three platforms before it publishes anything. Debug is the default configuration, so none of these needs a flag:
-
-```bash
-dotnet build XsdEditor.slnx                       # warnings are errors
-dotnet test  XsdEditor.slnx
-dotnet run --project src/XsdEditor.App            # the editor
-dotnet run --project src/XsdEditor.Cli -- --help  # the headless harness
-dotnet format XsdEditor.slnx                      # CI runs --verify-no-changes
-```
+**This is how you build**, and what CI runs on all three platforms before it publishes anything. Debug is the default configuration, so nothing needs a flag: `dotnet build`, `dotnet test`, `dotnet run` and `dotnet format` over `XsdEditor.slnx` are the whole loop, and the exact commands are in [`../AGENTS.md`](../AGENTS.md).
 
 It builds incrementally, keeps full debugging information, and runs against the SDK's shared runtime, so a rebuild is seconds rather than a relink of the whole framework. Nothing in `XSDEDITOR_CORPUS`, and no runtime identifier, is needed to build or to run the unit suite.
 
