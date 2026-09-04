@@ -1,3 +1,4 @@
+using XsdEditor.Core;
 using XsdEditor.Core.Syntax;
 using Xunit.Abstractions;
 
@@ -32,15 +33,18 @@ public class CorpusRoundTripTests
 
         foreach (var file in files)
         {
-            // Read as text without transcoding line endings: XE-086 pins the round-trip
-            // suite to keep-source precisely so it cannot pass on one CI runner and fail on
-            // another, and a normalising read here would defeat that.
-            var source = File.ReadAllText(file);
-            var tree = SyntaxTree.Parse(source);
+            // Read without transcoding line endings: XE-086 pins the round-trip suite to
+            // keep-source precisely so it cannot pass on one CI runner and fail on another,
+            // and a normalising read here would defeat that. SourceFile rather than
+            // File.ReadAllText because the latter discards a byte-order mark, which would
+            // make this an assertion about decoded text rather than about bytes.
+            var sourceFile = SourceFile.Read(file);
+            var tree = SyntaxTree.Parse(sourceFile.Text);
 
             Assert.True(
-                source == tree.Root.ToFullString(),
-                $"{Path.GetFileName(file)} did not round trip.");
+                sourceFile.ToBytes(tree.Root.ToFullString()).AsSpan()
+                    .SequenceEqual(File.ReadAllBytes(file)),
+                $"{Path.GetFileName(file)} did not round trip byte for byte.");
 
             foreach (var node in tree.Root.DescendantNodesAndSelf())
             {
@@ -64,7 +68,7 @@ public class CorpusRoundTripTests
 
         foreach (var file in files)
         {
-            var tree = SyntaxTree.Parse(File.ReadAllText(file));
+            var tree = SyntaxTree.Parse(SourceFile.Read(file).Text);
 
             Assert.True(
                 tree.IsWellFormed,

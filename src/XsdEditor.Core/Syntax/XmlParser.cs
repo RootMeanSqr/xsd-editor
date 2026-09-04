@@ -20,9 +20,22 @@ namespace XsdEditor.Core.Syntax;
 /// </remarks>
 internal sealed class XmlParser
 {
+    /// <summary>
+    /// How deep element nesting may go before the parser stops descending.
+    /// </summary>
+    /// <remarks>
+    /// The parse is recursive, so depth costs stack. A <see cref="StackOverflowException"/>
+    /// cannot be caught and takes the process with it, which would break the one promise
+    /// this parser makes — that it never throws — on the malformed input <c>XE-031</c>
+    /// exists for. The reference corpus nests 8 deep at its worst, so this is roughly two
+    /// orders of magnitude of headroom over anything a schema plausibly contains.
+    /// </remarks>
+    private const int _maxNestingDepth = 512;
+
     private readonly XmlLexer _lexer;
     private readonly List<SyntaxDiagnostic> _diagnostics = [];
     private readonly List<string> _openElements = [];
+    private bool _reportedNestingLimit;
 
     /// <summary>Creates a parser over a source buffer.</summary>
     /// <param name="text">The buffer to parse.</param>
@@ -98,7 +111,16 @@ internal sealed class XmlParser
             }
             else if (_lexer.StartsWith("<!DOCTYPE"))
             {
-                children.Add(_lexer.LexDocumentType());
+                var start = _lexer.Position;
+                children.Add(_lexer.LexDocumentType(out var terminated));
+
+                if (!terminated)
+                {
+                    Report(
+                        SyntaxDiagnosticCode.UnterminatedConstruct,
+                        SourceSpan.FromBounds(start, _lexer.Position),
+                        "The document type declaration is missing its '>'.");
+                }
             }
             else if (_lexer.StartsWith("<?"))
             {
@@ -106,6 +128,12 @@ internal sealed class XmlParser
             }
             else if (IsElementStart())
             {
+                if (_openElements.Count >= _maxNestingDepth)
+                {
+                    children.Add(TooDeep());
+                    continue;
+                }
+
                 children.Add(ParseElement());
             }
             else
@@ -216,6 +244,14 @@ internal sealed class XmlParser
         if (_lexer.Peek() == '>')
         {
             children.Add(_lexer.LexPunctuation(SyntaxKind.GreaterThanToken, ">"));
+        }
+        else
+        {
+            // The start-tag path reports this; without it here, "<a></a" parsed clean.
+            Report(
+                SyntaxDiagnosticCode.UnclosedTag,
+                SourceSpan.FromBounds(start, _lexer.Position),
+                "The end tag is missing its '>'.");
         }
 
         if (code != SyntaxDiagnosticCode.None && message is not null)
@@ -395,6 +431,31 @@ internal sealed class XmlParser
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// Consumes a tag the parser will not descend into, once nesting has gone too deep.
+    /// </summary>
+    /// <remarks>
+    /// Reported once rather than per tag: past the limit every remaining tag would produce
+    /// one, and a thousand copies of the same finding buries everything else.
+    /// </remarks>
+    private GreenToken TooDeep()
+    {
+        var start = _lexer.Position;
+        var token = _lexer.LexGap();
+
+        if (!_reportedNestingLimit)
+        {
+            _reportedNestingLimit = true;
+            Report(
+                SyntaxDiagnosticCode.NestingTooDeep,
+                SourceSpan.FromBounds(start, _lexer.Position),
+                $"Elements nested more than {_maxNestingDepth} deep. The rest of this subtree "
+                + "is recorded as unparsed rather than descended into.");
+        }
+
+        return token;
     }
 
     private void Report(SyntaxDiagnosticCode code, SourceSpan span, string message) =>

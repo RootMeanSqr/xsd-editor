@@ -161,11 +161,29 @@ public class XmlParserTests
     }
 
     [Fact]
-    public void An_unterminated_attribute_value_stops_at_the_end_of_the_line()
+    public void An_attribute_value_may_span_lines()
     {
-        // One missing quote should cost one attribute, not the rest of the document. If the
-        // value ran to the next quote wherever it was, everything up to it would vanish into
-        // the value and XE-031's partial render would lose the whole file.
+        // A newline is legal inside a quoted attribute value, and a wrapped xsi:schemaLocation
+        // is the everyday case. Bounding the value at the line end truncated valid documents
+        // — corrupting correct input to improve recovery on incorrect input.
+        const string Source = "<a schemaLocation=\"urn:one one.xsd\n           urn:two two.xsd\"/>";
+        var tree = SyntaxTree.Parse(Source);
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+        Assert.Equal(Source, tree.Root.ToFullString());
+
+        var value = Assert.Single(
+            tree.Root.DescendantNodes().OfType<SyntaxToken>(),
+            token => token.Kind == SyntaxKind.AttributeValueToken);
+        Assert.Contains("\n", value.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unterminated_attribute_value_stops_at_the_next_tag()
+    {
+        // One missing quote should cost one tag, not the rest of the document. '<' is the
+        // right bound because XML forbids it inside an attribute value, so it cannot occur
+        // in a well-formed one.
         var tree = SyntaxTree.Parse("<a name=\"unterminated>\n<b/>");
 
         Assert.Contains(
@@ -369,6 +387,65 @@ public class XmlParserTests
         var tree = SyntaxTree.Parse("<a><![CDATA[Tom & Jerry]]></a>");
 
         Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Fact]
+    public void An_end_tag_missing_its_closing_bracket_is_reported()
+    {
+        // The start-tag path already reported this; the end-tag path did not, so "<a></a"
+        // parsed with no diagnostic at all and claimed to be well formed.
+        var tree = SyntaxTree.Parse("<a></a");
+
+        Assert.False(tree.IsWellFormed);
+        Assert.Contains(tree.Diagnostics, d => d.Code == SyntaxDiagnosticCode.UnclosedTag);
+    }
+
+    [Fact]
+    public void An_unterminated_document_type_declaration_is_reported()
+    {
+        var tree = SyntaxTree.Parse("<!DOCTYPE a [ <!ENTITY x \"y\">");
+
+        Assert.Contains(
+            tree.Diagnostics,
+            d => d.Code == SyntaxDiagnosticCode.UnterminatedConstruct);
+    }
+
+    [Fact]
+    public void Nesting_deeper_than_the_parser_descends_is_reported_rather_than_overflowing()
+    {
+        // A StackOverflowException cannot be caught and takes the process with it, which
+        // would break the one promise this parser makes. The corpus nests 8 deep; this is
+        // 5,000, which is well past anything a schema plausibly contains and well past what
+        // the stack would survive.
+        const int Depth = 5000;
+        var source = string.Concat(Enumerable.Repeat("<a>", Depth))
+            + "deep"
+            + string.Concat(Enumerable.Repeat("</a>", Depth));
+
+        var tree = SyntaxTree.Parse(source);
+
+        Assert.Contains(tree.Diagnostics, d => d.Code == SyntaxDiagnosticCode.NestingTooDeep);
+
+        // Reported once, not once per tag past the limit.
+        Assert.Equal(1, tree.Diagnostics.Count(d => d.Code == SyntaxDiagnosticCode.NestingTooDeep));
+
+        // And the tree still covers every character, which is what keeps XE-031 true.
+        Assert.Equal(source, tree.Root.ToFullString());
+    }
+
+    [Fact]
+    public void Nesting_within_the_limit_still_parses_as_elements()
+    {
+        const int Depth = 100;
+        var source = string.Concat(Enumerable.Repeat("<a>", Depth))
+            + string.Concat(Enumerable.Repeat("</a>", Depth));
+
+        var tree = SyntaxTree.Parse(source);
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+        Assert.Equal(
+            Depth,
+            tree.Root.DescendantNodesAndSelf().Count(node => node.Kind == SyntaxKind.Element));
     }
 
     private static SyntaxNode FirstElement(SyntaxTree tree) =>

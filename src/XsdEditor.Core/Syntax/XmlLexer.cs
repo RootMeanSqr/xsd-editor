@@ -138,11 +138,20 @@ internal sealed class XmlLexer
     /// </summary>
     /// <returns>An <see cref="SyntaxKind.AttributeValueToken"/> covering quotes and content.</returns>
     /// <remarks>
+    /// <para>
     /// The value is taken verbatim: no attribute-value normalisation, and no reference
     /// resolution. Those two behaviours of <see cref="System.Xml.XmlReader"/> are precisely
-    /// why <c>0005</c> replaced it. An unterminated value runs to the end of the line rather
-    /// than to the end of the file, so one missing quote costs one attribute rather than the
-    /// rest of the document (<c>XE-031</c>).
+    /// why <c>0005</c> replaced it.
+    /// </para>
+    /// <para>
+    /// An unterminated value runs to the next <c>&lt;</c> rather than to the end of the
+    /// file, so one missing quote costs one tag rather than the rest of the document
+    /// (<c>XE-031</c>). <c>&lt;</c> is the right bound because XML forbids it inside an
+    /// attribute value, so it cannot appear in a well-formed one. **A newline is not a
+    /// bound**: a wrapped value such as a multi-line <c>xsi:schemaLocation</c> is perfectly
+    /// legal, and stopping at the line end would truncate a valid document — corrupting
+    /// correct input to improve recovery on incorrect input.
+    /// </para>
     /// </remarks>
     public GreenToken LexAttributeValue()
     {
@@ -154,7 +163,7 @@ internal sealed class XmlLexer
         }
 
         Position++;
-        while (!AtEnd && _text[Position] != quote && _text[Position] is not ('\r' or '\n'))
+        while (!AtEnd && _text[Position] != quote && _text[Position] != '<')
         {
             Position++;
         }
@@ -209,17 +218,24 @@ internal sealed class XmlLexer
     /// <summary>
     /// Scans a document type declaration verbatim, without interpreting it.
     /// </summary>
+    /// <param name="terminated">
+    /// Set to <see langword="true"/> when the declaration's own closing <c>&gt;</c> was
+    /// found. It has to be reported rather than inferred from the token's last character:
+    /// an internal subset ends with <c>&gt;</c> of its own, so an unterminated
+    /// <c>&lt;!DOCTYPE a [ &lt;!ENTITY x "y"&gt;</c> looks closed to any suffix test.
+    /// </param>
     /// <returns>A <see cref="SyntaxKind.DocumentTypeToken"/> covering the declaration.</returns>
     /// <remarks>
     /// <c>0005</c> puts DTDs outside this lexer's scope, so the declaration is preserved as
     /// one opaque token rather than modelled. An internal subset is skipped by matching its
     /// brackets, so that a <c>&gt;</c> inside it does not end the declaration early.
     /// </remarks>
-    public GreenToken LexDocumentType()
+    public GreenToken LexDocumentType(out bool terminated)
     {
         var start = Position;
         Position += "<!DOCTYPE".Length;
 
+        terminated = false;
         var depth = 0;
         while (!AtEnd)
         {
@@ -235,6 +251,7 @@ internal sealed class XmlLexer
             else if (current == '>' && depth <= 0)
             {
                 Position++;
+                terminated = true;
                 break;
             }
 

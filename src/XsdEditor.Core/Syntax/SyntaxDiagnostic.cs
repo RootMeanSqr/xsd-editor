@@ -44,6 +44,13 @@ public enum SyntaxDiagnosticCode
     /// <summary>An attribute has a name but no <c>=</c> and value.</summary>
     MalformedAttribute,
 
+    /// <summary>
+    /// Elements nested deeper than the parser will descend. Recovery stops recursing rather
+    /// than exhausting the stack, since a <see cref="StackOverflowException"/> cannot be
+    /// caught and would take the process with it.
+    /// </summary>
+    NestingTooDeep,
+
     /// <summary>An attribute value is missing its closing quote.</summary>
     UnterminatedAttributeValue,
 

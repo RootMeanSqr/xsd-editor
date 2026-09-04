@@ -1,4 +1,5 @@
 using System.Globalization;
+using XsdEditor.Core;
 using XsdEditor.Core.Syntax;
 
 namespace XsdEditor.Cli;
@@ -30,12 +31,15 @@ internal static class RoundTripCommand
 
             // Read without transcoding line endings. XE-086 pins the round-trip suite to
             // keep-source so that it cannot pass on one CI runner and fail on another, and a
-            // normalising read here would hide exactly the bug it exists to catch.
-            var source = File.ReadAllText(file);
+            // normalising read here would hide exactly the bug it exists to catch. SourceFile
+            // rather than File.ReadAllText because the latter discards a byte-order mark, so
+            // the comparison below would be about decoded text rather than about bytes.
+            var sourceFile = SourceFile.Read(file);
+            var source = sourceFile.Text;
             var tree = SyntaxTree.Parse(source);
             var written = tree.Root.ToFullString();
 
-            if (written == source)
+            if (sourceFile.ToBytes(written).AsSpan().SequenceEqual(File.ReadAllBytes(file)))
             {
                 var noun = tree.Diagnostics.Count == 1 ? "diagnostic" : "diagnostics";
                 Console.WriteLine(string.Create(
