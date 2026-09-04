@@ -333,6 +333,56 @@ public class XmlParserTests
         Assert.Contains(tree.Diagnostics, d => d.Code == SyntaxDiagnosticCode.RawAmpersand);
     }
 
+    [Theory]
+    [InlineData("&#x110000;")]   // past the end of Unicode
+    [InlineData("&#1114112;")]   // the same, in decimal
+    [InlineData("&#xD800;")]     // a lone surrogate
+    [InlineData("&#xDFFF;")]
+    [InlineData("&#0;")]         // NUL
+    [InlineData("&#x8;")]        // a control character below the space
+    [InlineData("&#xB;")]
+    [InlineData("&#xFFFE;")]     // the two BMP non-characters
+    [InlineData("&#xFFFF;")]
+    [InlineData("&#x99999999999;")] // long enough to overflow a careless accumulator
+    public void A_reference_to_a_code_point_XML_forbids_is_reported(string reference)
+    {
+        // Well formed as syntax, rejected by every conforming reader — XmlReader raises
+        // "is an invalid character" on each of these. Nothing downstream can rescue it, so
+        // it is not covered by XE-070's leniency either.
+        var tree = SyntaxTree.Parse($"<a>{reference}</a>");
+
+        var diagnostic = Assert.Single(tree.Diagnostics);
+        Assert.Equal(SyntaxDiagnosticCode.InvalidCharacterReference, diagnostic.Code);
+    }
+
+    [Theory]
+    [InlineData("&#x9;")]        // tab, line feed and carriage return are the allowed
+    [InlineData("&#xA;")]        // characters below the space
+    [InlineData("&#xD;")]
+    [InlineData("&#x20;")]       // the boundaries either side of the surrogate block
+    [InlineData("&#xD7FF;")]
+    [InlineData("&#xE000;")]
+    [InlineData("&#xFFFD;")]     // the last legal BMP character
+    [InlineData("&#x10000;")]    // the first and last supplementary ones
+    [InlineData("&#x10FFFF;")]
+    public void A_reference_to_a_code_point_XML_allows_is_not_reported(string reference)
+    {
+        var tree = SyntaxTree.Parse($"<a>{reference}</a>");
+
+        Assert.True(tree.IsWellFormed, string.Join("; ", tree.Diagnostics));
+    }
+
+    [Fact]
+    public void An_invalid_character_reference_is_reported_even_in_annotation_text()
+    {
+        // XE-070's leniency tolerates a raw '&', which an escaping pass could repair. This
+        // is a different failure and the tolerance does not extend to it.
+        var tree = SyntaxTree.Parse("<xs:documentation>a & b &#0;</xs:documentation>");
+
+        var diagnostic = Assert.Single(tree.Diagnostics);
+        Assert.Equal(SyntaxDiagnosticCode.InvalidCharacterReference, diagnostic.Code);
+    }
+
     [Fact]
     public void An_ampersand_inside_a_cdata_section_is_not_a_reference_and_not_an_error()
     {

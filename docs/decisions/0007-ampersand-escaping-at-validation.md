@@ -31,6 +31,10 @@ Attribute content stays strict **even inside an annotation subtree**, because `X
 
 Two consequences of `0005`'s scope fall out of this. There is no DTD and so no entity declaration to consult, which makes `&notdeclared;` a raw ampersand rather than a reference we cannot resolve. And an `&` inside a CDATA section is neither: nothing in there is markup, so there is nothing to escape and nothing to report.
 
+**A reference to a code point XML forbids is a separate diagnostic, and the leniency does not cover it.** `&#0;`, `&#xD800;` and `&#x110000;` are well formed as syntax and rejected by every conforming reader — `XmlReader` raises "is an invalid character" on each — so they are reported as `InvalidCharacterReference` wherever they appear, annotation text included. The distinction is what an escaping pass could repair: a raw `&` becomes `&amp;` and the document is readable, whereas a reference naming a surrogate or a control character is not rescuable by anything downstream. The accepted set is XML 1.0's `Char` production, and the boundaries either side of it are tests rather than a comment.
+
+The rule the syntax layer follows here is simply **if a conforming reader would reject it, we say so** — checked against `XmlReader` directly rather than reasoned about, for raw ampersands, undeclared entities and forbidden code points alike.
+
 **The element test is on local name, not on a resolved namespace**, because namespace resolution belongs to the schema model and the syntax layer sees only prefixes. That makes it slightly generous — a foreign element that happens to be called `documentation` gets the same tolerance — which is the right way round: the cost is a raw ampersand going unreported, never a valid document being called malformed. The schema model can tighten it once it knows the namespaces.
 
 ## Consequences

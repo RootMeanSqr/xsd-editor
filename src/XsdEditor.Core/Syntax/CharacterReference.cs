@@ -21,29 +21,31 @@ internal static class CharacterReference
     private static readonly string[] _predefined = ["amp", "lt", "gt", "quot", "apos"];
 
     /// <summary>
-    /// Whether a valid character or predefined entity reference starts at an index.
+    /// Classifies what, if anything, an ampersand opens.
     /// </summary>
     /// <param name="text">The buffer to look in.</param>
     /// <param name="index">Index of the <c>&amp;</c> that might open a reference.</param>
     /// <returns>
-    /// <see langword="true"/> if <paramref name="index"/> begins <c>&amp;#nn;</c>,
-    /// <c>&amp;#xhh;</c>, or one of <c>&amp;amp;</c>, <c>&amp;lt;</c>, <c>&amp;gt;</c>,
-    /// <c>&amp;quot;</c> and <c>&amp;apos;</c>.
+    /// <see cref="ReferenceKind.Valid"/> for <c>&amp;#nn;</c>, <c>&amp;#xhh;</c> naming a
+    /// legal XML character, or one of <c>&amp;amp;</c>, <c>&amp;lt;</c>, <c>&amp;gt;</c>,
+    /// <c>&amp;quot;</c> and <c>&amp;apos;</c>; <see cref="ReferenceKind.InvalidCharacter"/>
+    /// for a numeric reference naming a code point XML forbids; otherwise
+    /// <see cref="ReferenceKind.None"/>.
     /// </returns>
-    public static bool StartsAt(string text, int index)
+    public static ReferenceKind Classify(string text, int index)
     {
         if (index >= text.Length || text[index] != '&')
         {
-            return false;
+            return ReferenceKind.None;
         }
 
         var next = index + 1;
         return next < text.Length && text[next] == '#'
-            ? IsNumeric(text, next + 1)
-            : IsPredefined(text, next);
+            ? ClassifyNumeric(text, next + 1)
+            : IsPredefined(text, next) ? ReferenceKind.Valid : ReferenceKind.None;
     }
 
-    private static bool IsNumeric(string text, int index)
+    private static ReferenceKind ClassifyNumeric(string text, int index)
     {
         var hex = index < text.Length && (text[index] is 'x' or 'X');
         if (hex)
@@ -52,14 +54,57 @@ internal static class CharacterReference
         }
 
         var digits = 0;
+        var codePoint = 0;
+        var overflowed = false;
+
         while (index < text.Length && IsDigit(text[index], hex))
         {
+            if (!overflowed)
+            {
+                codePoint = (codePoint * (hex ? 16 : 10)) + Value(text[index]);
+
+                // Anything past the last legal code point is out of range whatever the
+                // remaining digits say, and stopping here keeps the accumulator from
+                // overflowing on a long run of them.
+                overflowed = codePoint > 0x10FFFF;
+            }
+
             index++;
             digits++;
         }
 
-        return digits > 0 && index < text.Length && text[index] == ';';
+        if (digits == 0 || index >= text.Length || text[index] != ';')
+        {
+            return ReferenceKind.None;
+        }
+
+        return !overflowed && IsXmlCharacter(codePoint)
+            ? ReferenceKind.Valid
+            : ReferenceKind.InvalidCharacter;
     }
+
+    /// <summary>
+    /// Whether a code point is one XML 1.0 allows in a document.
+    /// </summary>
+    /// <remarks>
+    /// The <c>Char</c> production: tab, line feed and carriage return, then everything from
+    /// the space up, minus the surrogate block and the two non-characters at the end of the
+    /// BMP. A reference naming anything else is well-formed as syntax and still rejected by
+    /// every conforming reader, <see cref="System.Xml.XmlReader"/> included — which is why
+    /// it is reported here rather than passed on as if it were text.
+    /// </remarks>
+    private static bool IsXmlCharacter(int codePoint) =>
+        codePoint is 0x9 or 0xA or 0xD
+            or >= 0x20 and <= 0xD7FF
+            or >= 0xE000 and <= 0xFFFD
+            or >= 0x10000 and <= 0x10FFFF;
+
+    private static int Value(char digit) => digit switch
+    {
+        >= '0' and <= '9' => digit - '0',
+        >= 'a' and <= 'f' => digit - 'a' + 10,
+        _ => digit - 'A' + 10,
+    };
 
     private static bool IsDigit(char value, bool hex) =>
         value is >= '0' and <= '9'
@@ -80,4 +125,20 @@ internal static class CharacterReference
 
         return false;
     }
+}
+
+/// <summary>What an ampersand turned out to open.</summary>
+internal enum ReferenceKind
+{
+    /// <summary>No reference: a raw ampersand, or something only shaped like one.</summary>
+    None,
+
+    /// <summary>A character or predefined entity reference naming a legal XML character.</summary>
+    Valid,
+
+    /// <summary>
+    /// A numeric reference whose syntax is well formed but whose code point XML forbids —
+    /// a surrogate, a control character, or one past the end of Unicode.
+    /// </summary>
+    InvalidCharacter,
 }

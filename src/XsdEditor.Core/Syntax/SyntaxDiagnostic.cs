@@ -52,4 +52,10 @@ public enum SyntaxDiagnosticCode
     /// <c>XE-070</c>'s leniency does not reach.
     /// </summary>
     RawAmpersand,
+
+    /// <summary>
+    /// A numeric character reference whose syntax is well formed but whose code point XML
+    /// forbids — a surrogate, a control character, or one past the end of Unicode.
+    /// </summary>
+    InvalidCharacterReference,
 }

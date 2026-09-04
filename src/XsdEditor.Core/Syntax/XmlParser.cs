@@ -55,7 +55,7 @@ internal sealed class XmlParser
                 var start = _lexer.Position;
                 var text = _lexer.LexText();
                 children.Add(text);
-                ReportRawAmpersands(text.Text, start, lenient: _annotationDepth > 0);
+                ReportAmpersandProblems(text.Text, start, lenient: _annotationDepth > 0);
 
                 // Only whitespace may sit outside the root element. Non-whitespace there is
                 // a well-formedness error, and XE-031 wants it marked rather than quietly
@@ -290,7 +290,7 @@ internal sealed class XmlParser
                 // XE-070's leniency is scoped to annotation and documentation text and
                 // explicitly does not reach attribute content, so this stays strict even
                 // inside an annotation subtree.
-                ReportRawAmpersands(value.Text, _lexer.Position - value.Text.Length, lenient: false);
+                ReportAmpersandProblems(value.Text, _lexer.Position - value.Text.Length, lenient: false);
 
                 if (value.Text.Length < 2 || value.Text[^1] != quote)
                 {
@@ -357,8 +357,8 @@ internal sealed class XmlParser
     }
 
     /// <summary>
-    /// Reports every raw ampersand in a run of text, unless this is somewhere
-    /// <c>XE-070</c> tolerates them.
+    /// Reports what each ampersand in a run of text turns out to be, where that is a
+    /// problem.
     /// </summary>
     /// <remarks>
     /// A raw <c>&amp;</c> is a well-formedness error: <see cref="System.Xml.XmlReader"/>
@@ -366,24 +366,41 @@ internal sealed class XmlParser
     /// lexer reads it happily. Reporting it is what lets the editor say so, and reporting
     /// it <em>per occurrence</em> rather than per token is what lets the caret be put on it.
     /// </remarks>
-    private void ReportRawAmpersands(string text, int start, bool lenient)
+    private void ReportAmpersandProblems(string text, int start, bool lenient)
     {
-        if (lenient)
-        {
-            return;
-        }
-
         for (var index = 0; index < text.Length; index++)
         {
-            if (text[index] != '&' || CharacterReference.StartsAt(text, index))
+            if (text[index] != '&')
             {
                 continue;
             }
 
-            Report(
-                SyntaxDiagnosticCode.RawAmpersand,
-                new SourceSpan(start + index, 1),
-                "A raw '&' that opens no character or entity reference. Escape it as '&amp;'.");
+            switch (CharacterReference.Classify(text, index))
+            {
+                case ReferenceKind.Valid:
+                    break;
+
+                case ReferenceKind.None when !lenient:
+                    Report(
+                        SyntaxDiagnosticCode.RawAmpersand,
+                        new SourceSpan(start + index, 1),
+                        "A raw '&' that opens no character or entity reference. Escape it as '&amp;'.");
+                    break;
+
+                case ReferenceKind.InvalidCharacter:
+                    // Not covered by XE-070's leniency even in annotation text. That
+                    // tolerates a raw ampersand, which an escaping pass could repair; this
+                    // is a well-formed reference to a code point XML forbids, which nothing
+                    // downstream can rescue and every conforming reader rejects.
+                    Report(
+                        SyntaxDiagnosticCode.InvalidCharacterReference,
+                        new SourceSpan(start + index, 1),
+                        "A character reference to a code point XML does not allow.");
+                    break;
+
+                default:
+                    break;
+            }
         }
     }
 
