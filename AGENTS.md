@@ -8,7 +8,7 @@ Working agreements for AI coding agents and human contributors in this repositor
 
 **The stack is .NET 10 with Avalonia**, in C#, recorded in [`docs/decisions/0002-technology-stack.md`](docs/decisions/0002-technology-stack.md). Published self-contained, single-file and trimmed, under the JIT. `CommunityToolkit.Mvvm` is the MVVM layer.
 
-Work proceeds in phases; the route from here to a shipping editor is [`docs/implementation-plan.md`](docs/implementation-plan.md). Read it before starting a piece of work, so that a change lands in the phase it belongs to.
+Work proceeds in phases; the route from here to a shipping editor is [`docs/implementation-plan.md`](docs/implementation-plan.md). Read it before starting a piece of work, so that a change lands in the phase it belongs to. **Which phase is in work is the status table at the top of that file** — it is the one place that says, and the pull request that changes a phase's state updates it.
 
 ## Repository layout
 

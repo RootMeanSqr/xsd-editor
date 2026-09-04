@@ -2,7 +2,20 @@
 
 The route from a documentation-only repository to a shipping editor. Phases land in order, each as its own pull request. Requirement identifiers refer to [`requirements.md`](requirements.md); decision numbers to [`decisions/`](decisions/).
 
-**Status:** Phase 0 landed. Phase 1 next.
+## Status
+
+One phase is in work at a time. Update this table in the pull request that changes a phase's state — it is the answer to "where are we", and a table that lags the work is worse than none.
+
+| Phase | State | |
+| --- | --- | --- |
+| **0** — Repository and CI scaffolding | **DONE** | Merged; exit criteria met |
+| **1** — Syntax tree, schema model, serialiser, commands, index | **IN WORK** | |
+| **2** — GUI scaffolding | TODO | |
+| **3** — Text View and the AvaloniaEdit spike | TODO | Blocked on `0003`'s spike, which it runs |
+| **4** — Design View | TODO | |
+| **5** — Whole-schema tools, packaging, release | TODO | |
+
+A phase moves to **DONE** only when its *Exit* line is satisfied, not when its code lands. Where a phase records blockers, they are named in the last column so that "TODO" never hides "cannot start".
 
 ## Context
 
@@ -12,7 +25,7 @@ This plan sequences the work from there to a shipping editor, front-loading the 
 
 ---
 
-## Phase 0 — Repository and CI scaffolding *(landed)*
+## Phase 0 — Repository and CI scaffolding — DONE
 
 Solution layout, build configuration, CI, and the documents above. What follows is what the repository actually contains, so that a later phase can trust it.
 
@@ -38,7 +51,7 @@ Solution layout, build configuration, CI, and the documents above. What follows 
 
 ---
 
-## Phase 1 — Syntax tree, schema model, serialiser, commands, index
+## Phase 1 — Syntax tree, schema model, serialiser, commands, index — IN WORK
 
 The largest and most load-bearing phase. Nothing here needs a UI.
 
@@ -159,7 +172,7 @@ Deserialisation goes through a **source-generated `JsonSerializerContext`**, not
 
 ---
 
-## Phase 2 — GUI scaffolding
+## Phase 2 — GUI scaffolding — TODO
 
 Mock-ups via the `design` skill first, then the shell: menu bar (`XE-044`), Top Ribbon (`XE-045`), tabs (`XE-014`, `XE-023`), and the four panels. Light/Dark theming (`XE-079`) and preference persistence (`XE-046`) land here because retrofitting theming across custom-drawn surfaces is expensive. Preference persistence includes the formatting settings and the line ending policy (`XE-085`, `XE-086`), whose *behaviour* was built in Phase 1 and which need only a surface here.
 
@@ -174,7 +187,7 @@ The three read-only panels wire straight onto the Phase 1 index and are what pro
 
 ---
 
-## Phase 3 — Text View and the AvaloniaEdit spike
+## Phase 3 — Text View and the AvaloniaEdit spike — TODO
 
 Run gates **G1–G6** against the corpus on at least two platforms including Linux, on the lowest specification intended to be supported (`0003`). G7 is already answered from Phase 1. Record the measurement table and update `0003` to accepted or rejected **in place**, as that record requires.
 
@@ -184,7 +197,7 @@ If G1–G5 fail, take the fallback ladder in order. If G6 or G7 fail, the contro
 
 ---
 
-## Phase 4 — Design View
+## Phase 4 — Design View — TODO
 
 The bespoke canvas, and the single largest lump of UI work. Split in two:
 
@@ -193,7 +206,7 @@ The bespoke canvas, and the single largest lump of UI work. Split in two:
 
 ---
 
-## Phase 5 — Whole-schema tools, packaging, release
+## Phase 5 — Whole-schema tools, packaging, release — TODO
 
 Create Schema Subset (`XE-021`), Unused Types Report (`XE-022`), the **Format Document** menu entry (`XE-084`, invoking the Phase 1 formatter), external change detection (`XE-024`), Open Recent and session re-open (`XE-044`, `XE-046`), per-platform installers, SBOM and `THIRD-PARTY-NOTICES`, and a **verified `XE-075` audit** of the shipped build — `0002` says egress compliance is to be proven against the artifact rather than assumed.
 
