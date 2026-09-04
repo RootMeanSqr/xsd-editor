@@ -76,19 +76,17 @@ One `SchemaIndex` per resolved closure.
 | `(SymbolSpace, QName) → List<Reference>`, each tagged `TypeOf` / `BaseOf` / `RefTo`, resolved or not | continuous reference check (`XE-056`), rename and delete reporting (`XE-039`, `XE-040`), and — filtered by kind — both child sets of the Dependencies Tree (`XE-050`), the unused-types derivation rule (`XE-022`), and the abstract-extension closure (`XE-021`) |
 | `ObjectId → Component` (element → owning type) | the element node's single child (`XE-050`) |
 
-Two consequences worth stating. First, "unresolved" is not a separate structure — it is simply a key in the reference map with no entry in the component map, which is exactly why `XE-056` can require a reference to stop being marked the moment its type is created. Second, expanding a Dependencies Tree node is **O(1) to find the dependants and O(k) to produce them**, k being how many there are — which for a widely used base type in this corpus is large. That is the honest form of the claim, and O(k) is unavoidable when k rows are being drawn; what the index buys is that nothing scans 5,534 types to discover them.
+Two consequences worth stating. First, "unresolved" is not a separate structure — it is simply a key in the reference map with no entry in the component map, which is exactly why `XE-056` can require a reference to stop being marked the moment its type is created. Second, expanding a Dependencies Tree node is **O(1) to find the dependants and O(k) to produce them**, k being how many there are — which for a widely used base type in this corpus is large. That is the honest form of the claim, and O(k) is unavoidable when k rows are being drawn; what the index buys is that nothing scans the closure's ~5,600 types to discover them.
 
 Forward edges (a type's own dependencies) come from the model rather than the index; the subset closure (`XE-021`) and the unused-types reachability walk (`XE-022`) are whole-closure O(V+E) passes and stay that way.
 
 ### 1d. Commands, undo, and index maintenance — the design risk
 
-**First task: measure a full index rebuild on the corpus.** A rebuild over 5,534 types may well be a few milliseconds — comfortably inside a frame — in which case rebuild-on-dirty is correct and incremental maintenance is complexity bought for nothing. This plan insists elsewhere on measuring before gating (`0004` on trim warnings, `0003` on the editor control); it should hold itself to the same rule rather than assuming the clever design.
+**First task: measure a full index rebuild on the corpus.** A rebuild over the closure's ~5,600 types may well be a few milliseconds — comfortably inside a frame — in which case rebuild-on-dirty is correct and incremental maintenance is complexity bought for nothing. This plan insists elsewhere on measuring before gating (`0004` on trim warnings, `0003` on the editor control); it should hold itself to the same rule rather than assuming the clever design.
 
 **If the measurement says rebuild is too slow**, the index is maintained incrementally by the command layer, never by scanning: every mutation reports its edge deltas and the index applies them. Incremental maintenance is easy to get subtly wrong, so it would be verified rather than trusted — a test-only `VerifyAgainstFullRebuild()`, with property-based tests running random command sequences and asserting equivalence after every step. That harness needs a property-testing library (CsCheck or FsCheck), which is a dependency decision under `AGENTS.md` and is taken then rather than assumed now.
 
 Either way the command layer belongs in this phase: it is what `XE-043`'s undo granularity is defined against.
-
-`ICommand` carries: apply, invert, the affected `ObjectId` and view, and a merge rule. This gives `XE-043`'s one-entry-per-semantic-operation, `XE-043`'s word-boundary grouping for text edits, and Undo/Redo Navigation.
 
 **The portable half of spike gate G7 lands here; the control-specific half stays in Phase 3.** `0003`'s G7 asks for one ordered stack across both views *with AvaloniaEdit's `UndoStack` disabled or subordinated* — and in this phase AvaloniaEdit has not been spiked, `0003` is still `proposed`, and its fallback ladder can still replace the control. Writing the AvaloniaEdit-specific design against a control that may not survive Phase 3 would be work done twice.
 
@@ -139,7 +137,7 @@ So the verb is shaped for a fast loop rather than for a pipeline:
 
 **Exploration is how the fixture set gets built.** Any input whose output surprises us becomes a case in the §6 built fixtures, with the expected output recorded — which is what turns a judgement made once by eye into a regression test. Expect that to amend `XE-085`: a setting the corpus never exercises may turn out to be needed, or one we specified may turn out not to be.
 
-The same verb serves a pre-commit hook or a CI check on a schema repository — `--check` exits non-zero if a file is not already formatted, and writes nothing — but that is a later use, and not why it is being built now.
+`--check` exits non-zero if a file is not already formatted and writes nothing, which is what later makes the verb usable in a pre-commit hook or a CI check on a schema repository.
 
 **Preferences are read from a JSON file** (`XE-046`), located by `--prefs <path>` or, absent that, the platform-conventional per-user location. The loader is the same one the application will use, so the CLI is not a second implementation of the settings — it is the first consumer of the real one, exercised a phase before there is any UI to set them from. [`preferences-example.json`](preferences-example.json) is the committed defaults file, and doubles as the fixture the loader's tests read.
 
@@ -154,7 +152,7 @@ Deserialisation goes through a **source-generated `JsonSerializerContext`**, not
 - Purpose-built fixtures for the four §6 verification gaps: anonymous complexTypes, raw ampersands, unresolvable directives, and a from-nothing authoring path.
 - Malformed-buffer fixtures producing gap nodes with the rest of the tree intact (`XE-031`).
 - Property-based command/index equivalence, as above.
-- **Formatter fixtures**, per §6: idempotence, `parse -> format -> parse` model preservation, zero diff over the corpus at the `XE-085` defaults, the single-line-file insertion test that is `XE-087`'s acceptance criterion, and the two documentation values that pin `XE-084`'s character-data exclusion.
+- **Formatter fixtures**, the five listed in §1e.
 - **Timings**, through `XsdEditor.Cli`, with a `tests/XsdEditor.Benchmarks` project added in this phase — it was deliberately not scaffolded in Phase 0, where it would have measured nothing and pulled in a dependency early. Cold parse of 8.3 MB, serialise, index build, a full validation pass, and index update after a rename. Recorded in `docs/measurements/phase-1-timings.md`, and re-run in a corpus CI job — also added in this phase, alongside the first suite there is to skip — so `XE-076` regressions surface early.
 
 *Exit:* `xsdedit format` exercised by hand across the built fixtures, with every surprise either recorded as a fixture or resolved by amending `XE-085`; `roundtrip` and `time` runnable against the corpus; round-trip proven on it with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.

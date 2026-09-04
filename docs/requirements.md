@@ -434,6 +434,7 @@ Derivation by extension is the dominant structural pattern in the corpus — rou
   | Spaces per level | 1–8; **available only when the indent character is spaces** | 4 |
   | Empty element form | `<tag/>`, `<tag />`, or `<tag></tag>` | **`<tag/>`** |
   | Attribute layout | all on the start-tag line, or one per line above a threshold | **all on the start-tag line** |
+  | Attribute wrap threshold | 1–16; used only when the layout is one-per-line | 4 |
   | Final newline at end of file | on or off | **on** |
 
   - **There is no tab-width setting.** One tab is one level; how wide a tab *displays* is Text View's tab-stop concern (§2.2) and never the document's.

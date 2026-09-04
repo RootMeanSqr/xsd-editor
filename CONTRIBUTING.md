@@ -33,9 +33,10 @@ If you are contributing on behalf of an employer that holds rights in your work,
 
 ## Adding a dependency
 
-Two checks, both required, before a dependency is proposed — see `XE-081` in the requirements and the working-style section of [`AGENTS.md`](AGENTS.md):
+Three checks, all required, before a dependency is proposed — see `XE-081` in the requirements and the working-style section of [`AGENTS.md`](AGENTS.md):
 
 - **Known CVEs.** Nothing ships with a known unfixed vulnerability. Every dependency lives inside the installed artifact with no runtime update path, so anything added here is something to watch for the life of the product.
 - **Licence.** It must permit distribution inside an Apache-2.0 product. MIT, BSD, ISC, Apache-2.0, MPL-2.0, and GPLv2-with-Classpath-Exception are fine. GPL and AGPL are not. LGPL is acceptable only where the library is linked dynamically from inside the artifact with a relink path preserved.
+- **Trim safety.** The application publishes trimmed, so a library that resolves types or members by name through reflection fails in the installed artifact and not in development. Prefer source-generator-based libraries, and run a Release publish (`docs/development.md`) before proposing one — that is the only build where this shows up.
 
 Say why the dependency is needed in the pull request description, and prefer the smaller dependency surface.

@@ -72,6 +72,9 @@ jobs:
           - { os: ubuntu-latest, rid: linux-x64 }
           - { os: windows-latest, rid: win-x64 }
           - { os: macos-latest, rid: osx-arm64 }
+          # osx-x64 is declared in RuntimeIdentifiers and XE-013 covers Intel Macs, so it
+          # is published too. Cross-RID publish from the arm64 runner; it is not run there.
+          - { os: macos-latest, rid: osx-x64 }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

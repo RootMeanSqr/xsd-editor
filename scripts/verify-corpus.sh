@@ -64,7 +64,10 @@ done < "$entries_file"
 echo "--- fetched ---"
 ls -l "$out_dir"
 
-actual="$(find "$out_dir" -maxdepth 1 -type f | wc -l)"
+# Count only .xsd files: the script writes checksums.txt into this directory below, so
+# counting every file makes a second run against the same directory fail — and fail by
+# accusing the contributor of the dropped-entry bug this check exists to catch.
+actual="$(find "$out_dir" -maxdepth 1 -type f -name '*.xsd' | wc -l)"
 if [ "$actual" -ne "$expected" ]; then
   fail "Expected $expected corpus files but fetched $actual. A dropped entry leaves the \
 closure incomplete, and the suites would then measure something other than the corpus."

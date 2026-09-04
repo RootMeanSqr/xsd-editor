@@ -51,4 +51,4 @@ Apache License 2.0 — see [`LICENSE`](LICENSE). The reasoning, including what i
 
 ## Contributing
 
-Work happens on short-lived branches off `main`, merged via pull request. Run `dotnet format`, `dotnet build` and `dotnet test` before proposing a change; CI runs all three on Windows, macOS and Linux. Contributors sign the [CLA](CLA.md) before their first pull request is merged — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Work happens on short-lived branches off `main`, merged via pull request. Run `dotnet format`, `dotnet build` and `dotnet test` before proposing a change; CI builds and tests on Windows, macOS and Linux, and checks formatting on Linux. Contributors sign the [CLA](CLA.md) before their first pull request is merged — see [`CONTRIBUTING.md`](CONTRIBUTING.md).

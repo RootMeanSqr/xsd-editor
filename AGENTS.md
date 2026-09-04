@@ -45,7 +45,7 @@ dotnet run --project src/XsdEditor.Cli -- --help # the headless harness
 
 `dotnet build` treats warnings as errors and runs the .NET analysers, so the build *is* the static-analysis gate `XE-081` asks for — a finding fails locally exactly as it does in CI.
 
-**The reference corpus is not in the repository** and is located through `XSDEDITOR_CORPUS`: a list of paths or URLs separated by the platform path separator, of which **the first is the entry point and the rest are its `include`/`import` dependencies** ([`docs/decisions/0004-build-and-security-tooling.md`](docs/decisions/0004-build-and-security-tooling.md)). Without it the build and the unit suite pass, and only the corpus round-trip and timing suites skip — loudly. They are the acceptance tests for `XE-069`, `XE-071` and `XE-072`, so run them before proposing a change to the parser, model or serialiser.
+**The reference corpus is not in the repository** and is located through `XSDEDITOR_CORPUS`: a list of paths or URLs separated by a **semicolon on every platform** (a colon cannot separate entries that may be URLs), of which **the first is the entry point and the rest are its `include`/`import` dependencies** ([`docs/decisions/0004-build-and-security-tooling.md`](docs/decisions/0004-build-and-security-tooling.md)). Without it the build and the unit suite pass, and only the corpus round-trip and timing suites skip — loudly. They are the acceptance tests for `XE-069`, `XE-071`, `XE-072` and `XE-083`, so run them before proposing a change to the parser, model or serialiser.
 
 **CI logic lives in scripts, not in the workflow.** Anything past a couple of lines, or with
 control flow, goes in a file that CI calls: bash embedded in a YAML block scalar cannot be

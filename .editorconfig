@@ -12,8 +12,19 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-[*.{json,yml,yaml,csproj,props,targets,slnx,axaml,xaml,xml,xsd}]
+[*.{json,yml,yaml,csproj,props,targets,slnx,axaml,xaml,xml}]
 indent_size = 2
+
+[*.xsd]
+# Schema fixtures are round-trip test inputs whose exact bytes are the thing under test
+# (XE-067, XE-083), which is also why .gitattributes marks them -text. An editor applying
+# the [*] rules would convert a CRLF fixture to LF and strip the trailing whitespace that
+# the XE-084 character-data fixtures exist to prove is preserved — destroying the test
+# case on save, silently, since dotnet format never reads these files.
+indent_size = 2
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = false
 
 [*.md]
 # AGENTS.md: no line-width rule, and trailing spaces are a Markdown line break.
