@@ -44,6 +44,22 @@ Enforcement is therefore by hand for now, against the licence annotated beside e
 
 `XE-081`'s split remains intact either way: composition scanning over dependencies, and static analysis over our own code, both gating merge, with Medium and Low triaged rather than gating.
 
+### Severity mapping
+
+`XE-081` gates on **Critical and High** and triages Medium and Low. No tool we use speaks in those words. NuGet's audit reports Critical/High/Moderate/Low; Roslyn reports Error/Warning/Info/Hidden and has no notion of security severity at all. A requirement stated in a vocabulary no gate emits cannot be checked, so the mapping is recorded here and every tool adopted later adds a row rather than arguing about what its levels mean.
+
+| Tool | Critical | High | Medium | Low |
+| --- | --- | --- | --- | --- |
+| **NuGet audit** (`NuGetAudit`, `dotnet list package --vulnerable`) | Critical | High | Moderate | Low |
+| **Roslyn analysers** (`EnableNETAnalyzers`, `AnalysisLevel=latest-recommended`) | — | Error | Warning | Info, Hidden |
+
+Two consequences of the Roslyn row are worth stating, because the build is stricter than `XE-081` requires and that is easy to misread as a contradiction:
+
+- **Roslyn has no Critical.** Its worst outcome is a build that does not compile. Nothing is lost: `XE-081` gates on Critical *and* High, so a High gate over our own code satisfies it.
+- **`TreatWarningsAsErrors` gates the Medium row too**, which `XE-081` says may be triaged. That is deliberate and stricter than required: a warning that is not an error is a warning nobody fixes, and at this size the cost of holding the line is near zero. The **triage clause therefore applies to composition scanning**, where the finding is in someone else's code and the only remedies are pin, replace, or accept. Relaxing this later is a change to `Directory.Build.props` and a row here, not a change to `XE-081`.
+
+A tool with no severity concept at all — a formatter, a licence scanner — takes no row. Rows are for tools whose findings can gate.
+
 ### Dependencies are centrally versioned and lock-filed
 
 `Directory.Packages.props` carries every version, annotated with its licence, because Apache-2.0 §4d obliges us to carry each dependency's `NOTICE` into the installer and the same inventory feeds the SBOM and the composition scan. Lock files are **not** adopted yet: `RestorePackagesWithLockFile` is unset and nothing is committed, because there is nothing worth locking until the dependency set settles (the plan's Phase 0 carried-forward list). Adopting them, and moving CI to a locked restore, is the same change.
