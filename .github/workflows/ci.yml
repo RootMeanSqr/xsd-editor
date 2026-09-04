@@ -89,7 +89,7 @@ jobs:
           dotnet publish src/XsdEditor.App/XsdEditor.App.csproj
           --configuration Release
           --runtime ${{ matrix.rid }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: xsd-editor-${{ matrix.rid }}
           path: src/XsdEditor.App/bin/Release/net10.0/${{ matrix.rid }}/publish/
@@ -118,7 +118,7 @@ jobs:
       - name: Package inventory (informational)
         run: dotnet list XsdEditor.slnx package --include-transitive | tee packages.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: supply-chain-report
@@ -143,7 +143,7 @@ jobs:
           XSDEDITOR_CORPUS: ${{ vars.XSDEDITOR_CORPUS }}
         run: scripts/verify-corpus.sh corpus
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: corpus-checksums
