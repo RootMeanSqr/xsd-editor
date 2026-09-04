@@ -120,15 +120,26 @@ These are architectural rather than cosmetic — cancellation has to run through
 
 ### 1g. The CLI surface
 
-`XsdEditor.Cli` was scaffolded in Phase 0 as the harness CI measures through. This phase gives it verbs, and one of them is a real tool rather than a test fixture:
+`XsdEditor.Cli` was scaffolded in Phase 0 as the harness CI measures through. This phase gives it verbs:
 
 | Verb | Purpose |
 | --- | --- |
-| `xsdedit format <file>` | Runs the `XE-084` formatter. `--in-place` writes, the default writes to stdout, `--check` exits non-zero if the file is not already formatted and writes nothing |
+| `xsdedit format` | Runs the `XE-084` formatter over a file or stdin |
 | `xsdedit roundtrip <file>` | Parse, serialise, and diff against the input — the acceptance check for `XE-067`–`XE-072`, scriptable over a directory |
 | `xsdedit time <file>` | The timing runs recorded in `measurements/phase-1-timings.md` |
 
-**`format` is the reason the formatter is reachable a phase before the Tools menu exists** (`XE-084` lands its UI in Phase 5). It also makes the formatter usable in a pre-commit hook or a CI check on a schema repository, which is a use the GUI cannot serve — and `--check` is what makes that possible without a working tree diff.
+**`format` exists first to be experimented with**, not to be scripted. The formatter is the one component whose output is judged by eye — a rule can be correct, idempotent and model-preserving and still produce a file nobody wants to read — and `XE-085`'s settings interact, so the way to find out whether they cover the real range of inputs is to feed varied ones through and look. That has to happen while the settings are still cheap to change, which is now, and it cannot wait for the Phase 5 menu entry.
+
+So the verb is shaped for a fast loop rather than for a pipeline:
+
+- **stdin to stdout by default**, so trying a snippet costs no file. `--in-place` writes back; a file argument reads from disk.
+- **Every `XE-085` preference is also a flag** — `--indent spaces --spaces 2 --empty-element paired` and so on. Precedence is flag over file over default, so sweeping one setting across an input does not mean editing JSON between runs. This is the difference between trying six variants in a minute and trying two.
+- **`--diff` prints a unified diff against the input** rather than the formatted file. On the 8.3 MB corpus file the full output is unreadable and the diff is the whole answer; at the defaults it should be empty, which is `XE-085`'s corpus claim made visible in one command.
+- **`--verify` re-parses the output and asserts the schema model is unchanged**, so an exploratory run reports whether the formatter *broke* something as well as how it looks. Aesthetic surprise and semantic damage look identical on screen otherwise.
+
+**Exploration is how the fixture set gets built.** Any input whose output surprises us becomes a case in the §6 built fixtures, with the expected output recorded — which is what turns a judgement made once by eye into a regression test. Expect that to amend `XE-085`: a setting the corpus never exercises may turn out to be needed, or one we specified may turn out not to be.
+
+The same verb serves a pre-commit hook or a CI check on a schema repository — `--check` exits non-zero if a file is not already formatted, and writes nothing — but that is a later use, and not why it is being built now.
 
 **Preferences are read from a JSON file** (`XE-046`), located by `--prefs <path>` or, absent that, the platform-conventional per-user location. The loader is the same one the application will use, so the CLI is not a second implementation of the settings — it is the first consumer of the real one, exercised a phase before there is any UI to set them from. [`preferences-example.json`](preferences-example.json) is the committed defaults file, and doubles as the fixture the loader's tests read.
 
@@ -146,7 +157,7 @@ Deserialisation goes through a **source-generated `JsonSerializerContext`**, not
 - **Formatter fixtures**, per §6: idempotence, `parse -> format -> parse` model preservation, zero diff over the corpus at the `XE-085` defaults, the single-line-file insertion test that is `XE-087`'s acceptance criterion, and the two documentation values that pin `XE-084`'s character-data exclusion.
 - **Timings**, through `XsdEditor.Cli`, with a `tests/XsdEditor.Benchmarks` project added in this phase — it was deliberately not scaffolded in Phase 0, where it would have measured nothing and pulled in a dependency early. Cold parse of 8.3 MB, serialise, index build, a full validation pass, and index update after a rename. Recorded in `docs/measurements/phase-1-timings.md`, and re-run in a corpus CI job — also added in this phase, alongside the first suite there is to skip — so `XE-076` regressions surface early.
 
-*Exit:* `xsdedit format`, `roundtrip` and `time` all runnable against the corpus; round-trip proven on it with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.
+*Exit:* `xsdedit format` exercised by hand across the built fixtures, with every surprise either recorded as a fixture or resolved by amending `XE-085`; `roundtrip` and `time` runnable against the corpus; round-trip proven on it with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.
 
 ---
 
