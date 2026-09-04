@@ -118,6 +118,22 @@ Its hard rule is the one the requirements state: it rewrites whitespace *between
 
 These are architectural rather than cosmetic — cancellation has to run through the whole validation path, and `XE-061`'s "stale results must never overwrite newer ones" is a property of the result-publishing API. Retrofitting either onto a synchronous validator in Phase 5 would mean rewriting it, so the API is shaped for them now even though nothing displays the results until Phase 2.
 
+### 1g. The CLI surface
+
+`XsdEditor.Cli` was scaffolded in Phase 0 as the harness CI measures through. This phase gives it verbs, and one of them is a real tool rather than a test fixture:
+
+| Verb | Purpose |
+| --- | --- |
+| `xsdedit format <file>` | Runs the `XE-084` formatter. `--in-place` writes, the default writes to stdout, `--check` exits non-zero if the file is not already formatted and writes nothing |
+| `xsdedit roundtrip <file>` | Parse, serialise, and diff against the input — the acceptance check for `XE-067`–`XE-072`, scriptable over a directory |
+| `xsdedit time <file>` | The timing runs recorded in `measurements/phase-1-timings.md` |
+
+**`format` is the reason the formatter is reachable a phase before the Tools menu exists** (`XE-084` lands its UI in Phase 5). It also makes the formatter usable in a pre-commit hook or a CI check on a schema repository, which is a use the GUI cannot serve — and `--check` is what makes that possible without a working tree diff.
+
+**Preferences are read from a JSON file** (`XE-046`), located by `--prefs <path>` or, absent that, the platform-conventional per-user location. The loader is the same one the application will use, so the CLI is not a second implementation of the settings — it is the first consumer of the real one, exercised a phase before there is any UI to set them from. [`preferences-example.json`](preferences-example.json) is the committed defaults file, and doubles as the fixture the loader's tests read.
+
+Deserialisation goes through a **source-generated `JsonSerializerContext`**, not reflection: the application publishes trimmed, and `0002` records that a library resolving members by name fails in the installed artifact rather than in development. That is also why JSON rather than YAML or TOML — `System.Text.Json` is in the BCL, so the preference file costs no shipped dependency and nothing new enters the `XE-081` scan.
+
 ### Phase 1 verification
 
 - **Line endings are asserted explicitly, not assumed** (`XE-083`). The corpus is wholly CRLF, so a serialiser hard-coding `\r\n` passes every corpus test while being wrong; purpose-built LF and mixed-ending fixtures are what catch that, and they are written alongside the corpus suite rather than after it.
@@ -130,7 +146,7 @@ These are architectural rather than cosmetic — cancellation has to run through
 - **Formatter fixtures**, per §6: idempotence, `parse -> format -> parse` model preservation, zero diff over the corpus at the `XE-085` defaults, the single-line-file insertion test that is `XE-087`'s acceptance criterion, and the two documentation values that pin `XE-084`'s character-data exclusion.
 - **Timings**, through `XsdEditor.Cli`, with a `tests/XsdEditor.Benchmarks` project added in this phase — it was deliberately not scaffolded in Phase 0, where it would have measured nothing and pulled in a dependency early. Cold parse of 8.3 MB, serialise, index build, a full validation pass, and index update after a rename. Recorded in `docs/measurements/phase-1-timings.md`, and re-run in a corpus CI job — also added in this phase, alongside the first suite there is to skip — so `XE-076` regressions surface early.
 
-*Exit:* round-trip proven on the corpus with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.
+*Exit:* `xsdedit format`, `roundtrip` and `time` all runnable against the corpus; round-trip proven on it with exactly the two predicted diffs; the width-sum invariant holding as a property test; the formatter idempotent and producing zero diff on the corpus at its defaults; timings recorded; the portable half of G7 designed.
 
 ---
 
