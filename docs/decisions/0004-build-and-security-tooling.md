@@ -68,7 +68,9 @@ A tool with no severity concept at all — a formatter, a licence scanner — ta
 
 **Transitive pinning is enabled, and is how a vulnerable indirect dependency is answered.** `XE-081` forbids shipping a dependency with a known unfixed vulnerability, but most of the dependency graph is not ours to choose — it arrives through Avalonia. Central transitive pinning lets a `PackageVersion` entry alone lift such a package to a patched release without waiting for the parent to update, which is the "update" response `AGENTS.md` names first. Pins live in their own labelled group with the advisory and the reasoning recorded beside each, since a pin with no stated cause is one a later contributor deletes.
 
-This is not hypothetical: the very first CI run found `Tmds.DBus.Protocol` 0.21.2 reaching the artifact through Avalonia's Linux backend with a High-severity advisory, and it is pinned to 0.21.3. Worth recording that the gate paid for itself before there was any product code.
+This is not hypothetical: the very first CI run found `Tmds.DBus.Protocol` 0.21.2 reaching the artifact through Avalonia's Linux backend with a High-severity advisory, and it was pinned to 0.21.3. Worth recording that the gate paid for itself before there was any product code.
+
+> **Update, 2026-09-04.** That pin is gone. Avalonia 12.1.2's `Avalonia.FreeDesktop` depends on `Tmds.DBus.Protocol [0.94.1, )`, which is outside the advisory's affected ranges, so the parent moved past it and the pin was removed with the migration in [`0006`](0006-avalonia-12-migration.md) rather than carried forward. The paragraph above stands as the reasoning for pinning; this note records that the condition it answered no longer holds. There are no transitive pins at present.
 
 ## Consequences
 
